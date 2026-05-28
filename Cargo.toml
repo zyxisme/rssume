@@ -1,10 +1,14 @@
 [package]
 name = "rssume"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "RSS middleware with AI-powered translation and summarization"
 license = "MIT"
-repository = "https://github.com/rssume/rssume"
+repository = "https://github.com/zyxisme/rssume"
+documentation = "https://docs.rs/rssume"
+readme = "README.md"
+keywords = ["rss", "feed", "llm", "translation", "summarization"]
+categories = ["command-line-utilities", "web-programming"]
 
 [[bin]]
 name = "rssume"
