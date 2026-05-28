@@ -36,22 +36,29 @@ jobs:
       matrix:
         target:
           - os: ubuntu-latest
+            triple: x86_64-unknown-linux-gnu
             profile: release
           - os: macos-latest
+            triple: aarch64-apple-darwin
             profile: release
           - os: windows-latest
+            triple: x86_64-pc-windows-msvc
             profile: debug
     runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target.triple }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ runner.os }}
       - name: cargo test
         run: |
           if [ "${{ matrix.target.profile }}" = "release" ]; then
-            cargo test --release
+            cargo test --release --target ${{ matrix.target.triple }}
           else
-            cargo test
+            cargo test --target ${{ matrix.target.triple }}
           fi
         shell: bash
 
@@ -83,6 +90,8 @@ jobs:
         with:
           targets: ${{ matrix.target.triple }}
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ runner.os }}
 
       - name: cargo build
         run: |
