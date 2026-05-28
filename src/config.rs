@@ -65,7 +65,7 @@ fn default_port() -> u16 {
     3000
 }
 fn default_target_lang() -> String {
-    "zho".into()
+    "zh_CN".into()
 }
 fn default_translation_base_url() -> String {
     "https://api.openai.com/v1".into()
@@ -127,9 +127,8 @@ host = "127.0.0.1"
 port = 3000
 
 [language]
-# ISO 639-3 code for the target language
-# zho = Chinese, eng = English, jpn = Japanese, etc.
-target = "zho"
+# Target language code (locale format e.g. zh_CN, en, ja)
+target = "zh_CN"
 
 [llm.translation]
 provider = "openai"

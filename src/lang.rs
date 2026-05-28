@@ -16,15 +16,25 @@ pub fn needs_translation(text: &str, target_lang: &str) -> bool {
 }
 
 fn normalize_code(code: &str) -> &str {
-    let base = code.split('-').next().unwrap_or(code);
+    let base = code.split(['-', '_']).next().unwrap_or(code);
     match base {
-        "cmn" => "zho",
+        "cmn" | "zh" => "zho",
+        "eng" | "en" => "eng",
+        "jpn" | "ja" => "jpn",
+        "kor" | "ko" => "kor",
+        "fra" | "fr" => "fra",
+        "deu" | "de" => "deu",
+        "spa" | "es" => "spa",
+        "rus" | "ru" => "rus",
+        "ara" | "ar" => "ara",
+        "por" | "pt" => "por",
+        "ita" | "it" => "ita",
         other => other,
     }
 }
 
 pub fn lang_name(code: &str) -> String {
-    let code = code.split('-').next().unwrap_or(code);
+    let code = code.split(['-', '_']).next().unwrap_or(code);
     match code {
         "zho" | "zh" | "cmn" => "Chinese",
         "eng" | "en" => "English",

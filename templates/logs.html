@@ -1,10 +1,43 @@
 {% extends "base.html" %}
+{% block title %}rssume - {{ feed_name }} logs{% endblock %}
 {% block content %}
-<h2>{{ feed_name }} Logs</h2>
-<p>Translation logs for this feed. Real content coming in Task 10.</p>
-<ul>
-{% for log in logs %}
-  <li>{{ log.article_title }} — {{ log.status }}</li>
+<h1>{{ feed_name }} — Translation Logs</h1>
+<p class="subtitle">{{ logs | length }} entries (max 500, newest first)</p>
+
+<div style="margin-bottom:16px;">
+    <a href="/panel" class="btn">← Dashboard</a>
+    <a href="/panel/feed/{{ feed_name }}" class="btn" style="margin-left:8px;">Feed Detail</a>
+    <a href="/panel/monitor" class="btn" style="margin-left:8px;">Live Monitor</a>
+</div>
+
+{% for log in logs | reverse %}
+<div class="card" style="margin-bottom:8px;padding:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+            <strong style="font-size:14px;">{{ log.article_title | truncate(length=80) }}</strong>
+            <div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
+                <span class="badge">{{ log.stage }}</span>
+                {% if log.status == "Completed" %}
+                <span class="badge badge-success">Completed</span>
+                {% elif log.status is string and "Failed" in log.status %}
+                <span class="badge badge-warning">{{ log.status }}</span>
+                {% else %}
+                <span class="badge">{{ log.status }}</span>
+                {% endif %}
+                <span class="badge">{{ log.model }}</span>
+            </div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:var(--mute);">
+            <div>{{ log.timestamp | truncate(length=19) }}</div>
+            {% if log.prompt_tokens %}
+            <div style="margin-top:2px;">in: {{ log.prompt_tokens }} · out: {{ log.completion_tokens }}</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
 {% endfor %}
-</ul>
+
+{% if logs | length == 0 %}
+<div class="empty-state"><h3>No logs yet</h3><p>Translation logs will appear once feed polling starts.</p></div>
+{% endif %}
 {% endblock %}

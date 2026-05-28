@@ -9,8 +9,7 @@ pub async fn translate(
     config: &LlmProviderConfig, text: &str, target_lang: &str,
     on_token: impl FnMut(&str),
 ) -> Result<StreamResult, crate::error::AppError> {
-    let lang_name = crate::lang::lang_name(target_lang);
-    let prompt = format!("Translate the following text to {}:\n\n{}", lang_name, text);
+    let prompt = format!("Translate the following text to {}:\n\n{}", target_lang, text);
     let append = config.prompt_append.clone().unwrap_or_default();
     let full = if append.is_empty() { prompt } else { format!("{}\n{}", prompt, append) };
     chat_stream(config, SYSTEM_PROMPT, &full, on_token).await

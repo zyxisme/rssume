@@ -4,77 +4,47 @@
 <h1>Dashboard</h1>
 <p class="subtitle">Monitor your RSS feeds and AI processing status</p>
 
-<div class="stats-bar">
+<div class="stats-bar" hx-get="/api/stats" hx-trigger="every 30s" hx-swap="outerHTML">
     <div class="stat-card">
-        <div class="number">{{ feeds | length }}</div>
-        <div class="label">Feeds</div>
+        <div class="number">{{ feeds | length }}</div><div class="label">Feeds</div>
     </div>
     <div class="stat-card">
-        <div class="number">
-            {% set total = 0 %}
-            {% for s in stats %}{% set total = total + s.article_count %}{% endfor %}
-            {{ total }}
-        </div>
+        <div class="number">{% set t=0 %}{% for s in stats %}{% set t=t+s.article_count %}{% endfor %}{{ t }}</div>
         <div class="label">Articles</div>
     </div>
     <div class="stat-card">
-        <div class="number">
-            {% set translated = 0 %}
-            {% for s in stats %}{% set translated = translated + s.translated_count %}{% endfor %}
-            {{ translated }}
-        </div>
+        <div class="number">{% set t=0 %}{% for s in stats %}{% set t=t+s.translated_count %}{% endfor %}{{ t }}</div>
         <div class="label">Translated</div>
     </div>
     <div class="stat-card">
-        <div class="number">
-            {% set summarized = 0 %}
-            {% for s in stats %}{% set summarized = summarized + s.with_summary_count %}{% endfor %}
-            {{ summarized }}
-        </div>
+        <div class="number">{% set t=0 %}{% for s in stats %}{% set t=t+s.with_summary_count %}{% endfor %}{{ t }}</div>
         <div class="label">Summarized</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ total_prompt_tokens + total_completion_tokens }}</div>
+        <div class="label">Tokens</div>
     </div>
 </div>
 
 <h2>Feeds</h2>
 <table>
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Articles</th>
-            <th>Translated</th>
-            <th>Summarized</th>
-            <th>RSS Link</th>
-        </tr>
-    </thead>
+    <thead><tr><th>Name</th><th>Status</th><th>Articles</th><th>Translated</th><th>Summarized</th><th>Last Fetch</th><th>RSS</th></tr></thead>
     <tbody>
         {% for feed in feeds %}
         <tr>
-            <td><a href="/panel/feed/{{ feed.name }}" style="color: var(--link); text-decoration: none;">{{ feed.name }}</a></td>
-            <td>
-                {% set count = 0 %}
-                {% for s in stats %}{% if s.feed_name == feed.name %}{% set count = s.article_count %}{% endif %}{% endfor %}
-                {{ count }}
-            </td>
-            <td>
-                {% set tcount = 0 %}
-                {% for s in stats %}{% if s.feed_name == feed.name %}{% set tcount = s.translated_count %}{% endif %}{% endfor %}
-                <span class="badge {% if tcount > 0 %}badge-success{% endif %}">{{ tcount }}</span>
-            </td>
-            <td>
-                {% set scount = 0 %}
-                {% for s in stats %}{% if s.feed_name == feed.name %}{% set scount = s.with_summary_count %}{% endif %}{% endfor %}
-                <span class="badge {% if scount > 0 %}badge-success{% endif %}">{{ scount }}</span>
-            </td>
-            <td><code style="font-family: var(--font-mono); font-size: 12px;">/feeds/{{ feed.name }}</code></td>
+            <td><a href="/panel/feed/{{ feed.name }}" style="color:var(--link);text-decoration:none;">{{ feed.name }}</a></td>
+            <td><span class="status-dot" id="status-{{ feed.name }}">●</span></td>
+            <td>{% set c=0 %}{% for s in stats %}{% if s.feed_name==feed.name %}{% set c=s.article_count %}{% endif %}{% endfor %}{{ c }}</td>
+            <td>{% set c=0 %}{% for s in stats %}{% if s.feed_name==feed.name %}{% set c=s.translated_count %}{% endif %}{% endfor %}<span class="badge {% if c>0 %}badge-success{% endif %}">{{ c }}</span></td>
+            <td>{% set c=0 %}{% for s in stats %}{% if s.feed_name==feed.name %}{% set c=s.with_summary_count %}{% endif %}{% endfor %}<span class="badge {% if c>0 %}badge-success{% endif %}">{{ c }}</span></td>
+            <td style="font-size:12px;color:var(--mute);">--</td>
+            <td><code style="font-size:12px;">/feeds/{{ feed.name }}</code></td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 
 {% if feeds | length == 0 %}
-<div class="empty-state">
-    <h3>No feeds configured</h3>
-    <p>Add RSS feeds to your config.toml to get started.</p>
-</div>
+<div class="empty-state"><h3>No feeds configured</h3><p>Add RSS feeds to your config.toml to get started.</p></div>
 {% endif %}
 {% endblock %}

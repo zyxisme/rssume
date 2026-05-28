@@ -1,10 +1,30 @@
 {% extends "base.html" %}
+{% block title %}rssume Monitor{% endblock %}
 {% block content %}
-<h2>Monitor</h2>
-<p>Feed monitoring dashboard. Real content coming in Task 10.</p>
-<ul>
-{% for feed in feeds %}
-  <li>{{ feed.name }} — {{ feed.url }}</li>
-{% endfor %}
-</ul>
+<h1>Live Monitor</h1>
+<p class="subtitle">Real-time translation progress and feed status</p>
+
+<div hx-get="/api/monitor/translating" hx-trigger="every 2s" hx-swap="outerHTML">
+    <div class="grid-2" style="margin-bottom:24px;">
+        {% for feed in feeds %}
+        <div class="card">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <span class="status-dot">●</span>
+                <strong>{{ feed.name }}</strong>
+            </div>
+            <div style="font-size:13px;color:var(--mute);">Loading...</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <h2>Active Translations</h2>
+    <div id="active-translations">
+        <p style="color:var(--mute);">Waiting for translation activity...</p>
+    </div>
+
+    <h2 style="margin-top:24px;">Recently Completed</h2>
+    <div id="recent-logs">
+        <p style="color:var(--mute);">No recent translations</p>
+    </div>
+</div>
 {% endblock %}
