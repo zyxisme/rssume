@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}rssume Settings{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+<p class="subtitle">Configuration overview</p>
+
+<div class="grid-2">
+    <div class="card">
+        <h3>Server</h3>
+        <table>
+            <tr><td style="color: var(--mute);">Host</td><td>{{ config.server.host }}</td></tr>
+            <tr><td style="color: var(--mute);">Port</td><td>{{ config.server.port }}</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Language</h3>
+        <table>
+            <tr><td style="color: var(--mute);">Target</td><td>{{ config.language.target }}</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>LLM — Translation</h3>
+        <table>
+            <tr><td style="color: var(--mute);">Provider</td><td>{{ config.llm.translation.provider }}</td></tr>
+            <tr><td style="color: var(--mute);">Model</td><td>{{ config.llm.translation.model }}</td></tr>
+            <tr><td style="color: var(--mute);">Base URL</td><td style="font-family: var(--font-mono); font-size: 12px;">{{ config.llm.translation.base_url }}</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>LLM — Summary</h3>
+        <table>
+            <tr><td style="color: var(--mute);">Provider</td><td>{{ config.llm.summary.provider }}</td></tr>
+            <tr><td style="color: var(--mute);">Model</td><td>{{ config.llm.summary.model }}</td></tr>
+            <tr><td style="color: var(--mute);">Base URL</td><td style="font-family: var(--font-mono); font-size: 12px;">{{ config.llm.summary.base_url }}</td></tr>
+        </table>
+    </div>
+</div>
+
+<h2 style="margin-top: 32px;">Configured Feeds</h2>
+<table>
+    <thead>
+        <tr><th>Name</th><th>URL</th><th>Status</th><th>Interval</th><th>RSS</th></tr>
+    </thead>
+    <tbody>
+        {% for feed in config.feeds %}
+        <tr>
+            <td><a href="/panel/feed/{{ feed.name }}" style="color: var(--link); text-decoration: none;">{{ feed.name }}</a></td>
+            <td style="font-family: var(--font-mono); font-size: 12px; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ feed.url }}">{{ feed.url }}</td>
+            <td><span class="badge {% if feed.enabled %}badge-success{% else %}badge-warning{% endif %}">{% if feed.enabled %}Active{% else %}Disabled{% endif %}</span></td>
+            <td>{{ feed.interval_secs }}s</td>
+            <td><code style="font-family: var(--font-mono); font-size: 12px;">/feeds/{{ feed.name }}</code></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="card" style="margin-top: 32px;">
+    <h3>Config File Location</h3>
+    <p style="color: var(--body); font-size: 14px;">
+        Edit <code style="font-family: var(--font-mono); font-size: 13px; background: var(--canvas-soft-2); padding: 2px 6px; border-radius: var(--rounded-sm);">~/.config/rssume/config.toml</code>
+        to change these settings, add feeds, or configure LLM providers.
+    </p>
+    <p style="color: var(--mute); font-size: 13px; margin-top: 8px;">
+        Data stored at: <code style="font-family: var(--font-mono); font-size: 12px;">~/.local/share/rssume/data/</code>
+    </p>
+</div>
+{% endblock %}

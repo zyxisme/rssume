@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}rssume - {{ feed_name }}{% endblock %}
+{% block content %}
+<h1>{{ feed_name }}</h1>
+<p class="subtitle">{{ articles | length }} articles</p>
+
+<div style="margin-bottom: 16px;">
+    <a href="/panel" class="btn">← Back</a>
+    <a href="/feeds/{{ feed_name }}" class="btn btn-primary" style="margin-left: 8px;">RSS Feed</a>
+</div>
+
+{% for article in articles | reverse %}
+<div class="card article-item">
+    <h3><a href="{{ article.link }}" target="_blank" rel="noopener" style="color: var(--ink); text-decoration: none;">{{ article.title }}</a></h3>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0;">
+        <span class="article-meta">{{ article.published_at | truncate(length=16) }}</span>
+        {% if article.translated %}
+        <span class="badge badge-success">Translated</span>
+        {% endif %}
+        {% if article.summary %}
+        <span class="badge badge-success">AI Summary</span>
+        {% endif %}
+        {% if article.source_lang %}
+        <span class="badge">{{ article.source_lang }}</span>
+        {% endif %}
+    </div>
+    {% if article.summary %}
+    <div style="background: var(--canvas-soft); border-left: 3px solid var(--link); padding: 8px 12px; border-radius: var(--rounded-sm); margin: 8px 0; font-size: 14px; color: var(--body);">
+        <strong>[AI 摘要]</strong> {{ article.summary }}
+    </div>
+    {% endif %}
+    <details style="margin-top: 8px;">
+        <summary style="cursor: pointer; font-size: 13px; color: var(--mute);">View content</summary>
+        <div style="margin-top: 8px; font-size: 14px; color: var(--body); line-height: 1.6;">
+            {{ article.content | truncate(length=1000) }}
+        </div>
+        {% if article.translated %}
+        <details style="margin-top: 8px;">
+            <summary style="cursor: pointer; font-size: 13px; color: var(--mute);">Show original</summary>
+            <div style="margin-top: 8px; font-size: 13px; color: var(--mute); line-height: 1.6;">
+                {{ article.original_content | truncate(length=1000) }}
+            </div>
+        </details>
+        {% endif %}
+    </details>
+</div>
+{% endfor %}
+
+{% if articles | length == 0 %}
+<div class="empty-state">
+    <h3>No articles yet</h3>
+    <p>Articles will appear here once the feed is polled.</p>
+</div>
+{% endif %}
+{% endblock %}
