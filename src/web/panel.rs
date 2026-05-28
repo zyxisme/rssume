@@ -1,8 +1,8 @@
+use super::api::AppState;
 use axum::response::Html;
 use axum::{Extension, Router, routing::get};
 use std::sync::Arc;
 use tera::{Context, Tera};
-use super::api::AppState;
 
 pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
@@ -17,9 +17,15 @@ pub fn router(state: Arc<AppState>) -> Router {
 fn tera_instance() -> Result<Tera, crate::error::AppError> {
     let mut tera = Tera::default();
     tera.add_raw_template("base.html", include_str!("../../templates/base.html"))?;
-    tera.add_raw_template("dashboard.html", include_str!("../../templates/dashboard.html"))?;
+    tera.add_raw_template(
+        "dashboard.html",
+        include_str!("../../templates/dashboard.html"),
+    )?;
     tera.add_raw_template("feed.html", include_str!("../../templates/feed.html"))?;
-    tera.add_raw_template("settings.html", include_str!("../../templates/settings.html"))?;
+    tera.add_raw_template(
+        "settings.html",
+        include_str!("../../templates/settings.html"),
+    )?;
     tera.add_raw_template("monitor.html", include_str!("../../templates/monitor.html"))?;
     tera.add_raw_template("logs.html", include_str!("../../templates/logs.html"))?;
     Ok(tera)
@@ -41,10 +47,9 @@ async fn dashboard(
         "total_completion_tokens",
         &mon.token_usage.total_completion_tokens,
     );
-    Ok(Html(
-        tera.render("dashboard.html", &ctx)
-            .map_err(|e| crate::error::AppError::Storage(format!("render: {}", e)))?,
-    ))
+    Ok(Html(tera.render("dashboard.html", &ctx).map_err(|e| {
+        crate::error::AppError::Storage(format!("render: {}", e))
+    })?))
 }
 
 async fn feed_detail(
@@ -59,10 +64,9 @@ async fn feed_detail(
     ctx.insert("feed_name", &name);
     ctx.insert("articles", &data.articles);
     ctx.insert("runtime_status", &mon.feeds.get(&name).map(|s| &s.status));
-    Ok(Html(
-        tera.render("feed.html", &ctx)
-            .map_err(|e| crate::error::AppError::Storage(format!("render: {}", e)))?,
-    ))
+    Ok(Html(tera.render("feed.html", &ctx).map_err(|e| {
+        crate::error::AppError::Storage(format!("render: {}", e))
+    })?))
 }
 
 async fn monitor_page(
@@ -73,10 +77,9 @@ async fn monitor_page(
     let mut ctx = Context::new();
     ctx.insert("title", "rssume Monitor");
     ctx.insert("feeds", &cfg.feeds);
-    Ok(Html(
-        tera.render("monitor.html", &ctx)
-            .map_err(|e| crate::error::AppError::Storage(format!("render: {}", e)))?,
-    ))
+    Ok(Html(tera.render("monitor.html", &ctx).map_err(|e| {
+        crate::error::AppError::Storage(format!("render: {}", e))
+    })?))
 }
 
 async fn feed_logs_page(
@@ -89,47 +92,44 @@ async fn feed_logs_page(
     ctx.insert("title", &format!("rssume - {} logs", name));
     ctx.insert("feed_name", &name);
     ctx.insert("logs", &mon.get_logs(&name));
-    Ok(Html(
-        tera.render("logs.html", &ctx)
-            .map_err(|e| crate::error::AppError::Storage(format!("render: {}", e)))?,
-    ))
+    Ok(Html(tera.render("logs.html", &ctx).map_err(|e| {
+        crate::error::AppError::Storage(format!("render: {}", e))
+    })?))
 }
 
 async fn settings() -> Result<Html<String>, crate::error::AppError> {
-    let config =
-        crate::config::Config::load().unwrap_or_else(|_| crate::config::Config {
-            server: crate::config::ServerConfig {
-                host: "127.0.0.1".into(),
-                port: 3000,
+    let config = crate::config::Config::load().unwrap_or_else(|_| crate::config::Config {
+        server: crate::config::ServerConfig {
+            host: "127.0.0.1".into(),
+            port: 3000,
+        },
+        language: crate::config::LanguageConfig {
+            target: "zh_CN".into(),
+        },
+        llm: crate::config::LlmConfig {
+            translation: crate::config::LlmProviderConfig {
+                provider: "".into(),
+                model: "".into(),
+                api_key: "".into(),
+                base_url: "".into(),
+                prompt_append: None,
             },
-            language: crate::config::LanguageConfig {
-                target: "zh_CN".into(),
+            summary: crate::config::LlmProviderConfig {
+                provider: "".into(),
+                model: "".into(),
+                api_key: "".into(),
+                base_url: "".into(),
+                prompt_append: None,
             },
-            llm: crate::config::LlmConfig {
-                translation: crate::config::LlmProviderConfig {
-                    provider: "".into(),
-                    model: "".into(),
-                    api_key: "".into(),
-                    base_url: "".into(),
-                    prompt_append: None,
-                },
-                summary: crate::config::LlmProviderConfig {
-                    provider: "".into(),
-                    model: "".into(),
-                    api_key: "".into(),
-                    base_url: "".into(),
-                    prompt_append: None,
-                },
-            },
-            feeds: vec![],
-            logging: Default::default(),
-        });
+        },
+        feeds: vec![],
+        logging: Default::default(),
+    });
     let tera = tera_instance()?;
     let mut ctx = Context::new();
     ctx.insert("title", "rssume Settings");
     ctx.insert("config", &config);
-    Ok(Html(
-        tera.render("settings.html", &ctx)
-            .map_err(|e| crate::error::AppError::Storage(format!("render: {}", e)))?,
-    ))
+    Ok(Html(tera.render("settings.html", &ctx).map_err(|e| {
+        crate::error::AppError::Storage(format!("render: {}", e))
+    })?))
 }

@@ -16,9 +16,15 @@ pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
     xml.push('\n');
     xml.push_str("  <channel>\n");
     xml.push_str(&format!("    <title>{}</title>\n", esc(feed_name)));
-    xml.push_str(&format!("    <description>rssume processed feed for {}</description>\n", esc(feed_name)));
+    xml.push_str(&format!(
+        "    <description>rssume processed feed for {}</description>\n",
+        esc(feed_name)
+    ));
     xml.push_str(&format!("    <link>/feeds/{}</link>\n", esc(feed_name)));
-    xml.push_str(&format!("    <atom:link href=\"/feeds/{}\" rel=\"self\" type=\"application/rss+xml\"/>\n", esc(feed_name)));
+    xml.push_str(&format!(
+        "    <atom:link href=\"/feeds/{}\" rel=\"self\" type=\"application/rss+xml\"/>\n",
+        esc(feed_name)
+    ));
     xml.push_str(&format!("    <lastBuildDate>{}</lastBuildDate>\n", now));
     xml.push_str("    <generator>rssume</generator>\n");
 
@@ -42,17 +48,29 @@ pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
 
         xml.push_str("      <content:encoded><![CDATA[");
         if let Some(ref s) = article.summary {
-            xml.push_str(&format!("<p><strong>[AI 摘要]</strong> {}</p><hr/>", esc(s)));
+            xml.push_str(&format!(
+                "<p><strong>[AI 摘要]</strong> {}</p><hr/>",
+                esc(s)
+            ));
         }
         xml.push_str(&article.content);
         if article.translated {
-            xml.push_str(&format!("<p><em>(Translated from {})</em></p>",
-                article.source_lang.as_ref().map(|l| crate::lang::lang_name(l)).unwrap_or_else(|| "unknown".to_string())));
+            xml.push_str(&format!(
+                "<p><em>(Translated from {})</em></p>",
+                article
+                    .source_lang
+                    .as_ref()
+                    .map(|l| crate::lang::lang_name(l))
+                    .unwrap_or_else(|| "unknown".to_string())
+            ));
         }
         xml.push_str("]]></content:encoded>\n");
 
         xml.push_str(&format!("      <link>{}</link>\n", esc(&article.link)));
-        xml.push_str(&format!("      <guid isPermaLink=\"false\">{}</guid>\n", esc(&article.id)));
+        xml.push_str(&format!(
+            "      <guid isPermaLink=\"false\">{}</guid>\n",
+            esc(&article.id)
+        ));
 
         if let Some(ref d) = article.published_at_rfc2822 {
             xml.push_str(&format!("      <pubDate>{}</pubDate>\n", d));
@@ -61,9 +79,12 @@ pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
         }
 
         if let Some(ref enc) = article.enclosure {
-            xml.push_str(&format!("      <enclosure url=\"{}\" length=\"{}\" type=\"{}\"/>\n",
-                esc(&enc.url), enc.length.unwrap_or(0),
-                esc(enc.content_type.as_deref().unwrap_or("image/jpeg"))));
+            xml.push_str(&format!(
+                "      <enclosure url=\"{}\" length=\"{}\" type=\"{}\"/>\n",
+                esc(&enc.url),
+                enc.length.unwrap_or(0),
+                esc(enc.content_type.as_deref().unwrap_or("image/jpeg"))
+            ));
         }
 
         xml.push_str("    </item>\n");
@@ -73,6 +94,9 @@ pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
 }
 
 fn esc(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
-        .replace('"', "&quot;").replace('\'', "&apos;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
 }

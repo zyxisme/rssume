@@ -1,6 +1,6 @@
+use super::api::AppState;
 use axum::{Extension, Router, routing::get};
 use std::sync::Arc;
-use super::api::AppState;
 
 pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
