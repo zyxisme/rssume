@@ -2,44 +2,44 @@
 
 # rssume
 
-[![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-2024%20edition-%23dea584?style=flat)](https://www.rust-lang.org)
-[![CI](https://github.com/zyxisme/rssume/actions/workflows/ci.yml/badge.svg)](https://github.com/zyxisme/rssume/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+[![Rust](https://img.shields.io/badge/Rust-2024_edition-%23dea584?style=for-the-badge)](https://www.rust-lang.org)
+[![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=for-the-badge)](https://github.com/zyxisme/rssume/actions/workflows/ci.yml)
 
-**RSS middleware with AI-powered translation and summarization.**
+**AI 驱动的 RSS 翻译与摘要中间件。**
 
-Monitor feeds → detect language → translate via LLM → add AI summaries → re-export as RSS
+订阅源 → 语言检测 → LLM 翻译 → AI 摘要 → 导出增强 RSS
 
 </div>
 
-## Features
+## 功能
 
-- **Multi-source RSS** — monitor multiple feeds with configurable polling intervals
-- **Language detection** — automatic recognition via whatlang, 70+ languages
-- **AI translation** — LLM-powered translation to your target language (OpenAI-compatible API)
-- **AI summaries** — one-sentence TL;DR prepended to every article
-- **RSS export** — one-to-one HTTP endpoints, compatible with any RSS reader
-- **Web dashboard** — feed management, article browsing, statistics, service control
-- **Multi-provider LLM** — OpenAI, DeepSeek, Groq, or any OpenAI-compatible endpoint
-- **Single binary** — zero runtime dependencies, cross-platform (Linux / macOS / Windows)
+- **多源订阅** — 支持多个 RSS 源，可独立配置轮询间隔
+- **语言检测** — 基于 whatlang 的自动语言识别，覆盖 70+ 语言
+- **AI 翻译** — LLM 驱动的翻译，将文章转为目标语言（兼容 OpenAI API）
+- **AI 摘要** — 每篇文章自动生成一句话 TL;DR，前置插入正文
+- **RSS 导出** — 一对一的 HTTP 端点，兼容所有 RSS 阅读器
+- **Web 控制台** — 订阅源管理、文章浏览、统计数据、服务控制
+- **多 LLM 厂商** — 支持 OpenAI、DeepSeek、Groq 等兼容接口
+- **单二进制** — 零运行时依赖，跨平台（Linux / macOS / Windows）
 
-## Quick Start
+## 快速开始
 
 ```bash
-# Install from source
+# 安装
 cargo install rssume
 
-# Run — auto-creates default config on first launch
+# 首次运行自动生成默认配置
 rssume
 ```
 
-Open `http://localhost:3000/panel` in your browser, configure your feeds and LLM settings directly from the dashboard.
+浏览器打开 `http://localhost:3000/panel`，在控制台中配置订阅源和 LLM 即可。
 
-RSS feeds are exported at `http://localhost:3000/feeds/:name`.
+RSS 订阅地址：`http://localhost:3000/feeds/:name`
 
-## Configuration
+## 配置
 
-`~/.config/rssume/config.toml` (auto-created on first run):
+首次运行自动创建 `~/.config/rssume/config.toml`：
 
 ```toml
 [server]
@@ -47,7 +47,7 @@ host = "127.0.0.1"
 port = 3000
 
 [language]
-target = "zho"  # ISO 639-3: zho=Chinese, eng=English
+target = "zho"  # ISO 639-3: zho=中文, eng=英文
 
 [llm.translation]
 provider = "openai"
@@ -68,9 +68,9 @@ enabled = true
 interval_secs = 300
 ```
 
-Use `${ENV_VAR}` syntax to reference environment variables for API keys.
+API Key 使用 `${ENV_VAR}` 语法引用环境变量，避免明文写入。
 
-## Build from Source
+## 从源码构建
 
 ```bash
 git clone https://github.com/zyxisme/rssume
@@ -78,6 +78,6 @@ cd rssume
 cargo build --release
 ```
 
-## License
+## 开源协议
 
 MIT
