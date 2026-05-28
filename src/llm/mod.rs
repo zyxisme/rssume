@@ -29,6 +29,7 @@ struct StreamChunk {
 #[derive(Debug, serde::Deserialize)]
 struct StreamChoice {
     delta: StreamDelta,
+    finish_reason: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -82,7 +83,7 @@ pub async fn chat_stream(
             },
         ],
         temperature: 0.3,
-        max_tokens: 4096,
+        max_tokens: config.max_tokens.unwrap_or(4096),
         stream: true,
     };
 
@@ -105,6 +106,7 @@ pub async fn chat_stream(
     let mut stream = resp.bytes_stream();
     let mut full_text = String::new();
     let mut usage: Option<UsageInfo> = None;
+    let mut finish_reason: Option<String> = None;
     let mut buf = String::new();
 
     loop {
@@ -112,17 +114,11 @@ pub async fn chat_stream(
             match tokio::time::timeout(std::time::Duration::from_secs(60), stream.next()).await {
                 Ok(Some(Ok(b))) => b,
                 Ok(Some(Err(e))) => {
-                    if full_text.is_empty() {
-                        return Err(crate::error::AppError::Llm(format!("stream: {}", e)));
-                    }
-                    break;
+                    return Err(crate::error::AppError::Llm(format!("stream: {}", e)));
                 }
                 Ok(None) => break,
                 Err(_) => {
-                    if full_text.is_empty() {
-                        return Err(crate::error::AppError::Llm("idle timeout".into()));
-                    }
-                    break;
+                    return Err(crate::error::AppError::Llm("idle timeout".into()));
                 }
             };
 
@@ -138,11 +134,14 @@ pub async fn chat_stream(
                     continue;
                 }
                 if let Ok(c) = serde_json::from_str::<StreamChunk>(data) {
-                    if let Some(d) = c.choices.first().map(|c| &c.delta)
-                        && let Some(ref ct) = d.content
-                    {
-                        full_text.push_str(ct);
-                        on_token(ct);
+                    if let Some(choice) = c.choices.first() {
+                        if let Some(ref ct) = choice.delta.content {
+                            full_text.push_str(ct);
+                            on_token(ct);
+                        }
+                        if let Some(ref fr) = choice.finish_reason {
+                            finish_reason = Some(fr.clone());
+                        }
                     }
                     if let Some(u) = c.usage {
                         usage = Some(u);
@@ -150,6 +149,12 @@ pub async fn chat_stream(
                 }
             }
         }
+    }
+
+    if finish_reason.as_deref() == Some("length") {
+        return Err(crate::error::AppError::Llm(
+            "translation truncated: max_tokens limit reached".into(),
+        ));
     }
 
     let usage = usage.unwrap_or(UsageInfo {

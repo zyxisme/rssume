@@ -40,6 +40,8 @@ pub struct LlmProviderConfig {
     pub base_url: String,
     #[serde(default)]
     pub prompt_append: Option<String>,
+    #[serde(default)]
+    pub max_tokens: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

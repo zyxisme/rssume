@@ -98,20 +98,35 @@ impl Scheduler {
                 let ot = mtok(self.monitor.clone(), feed_name.to_string(), lid.clone());
                 match translate::translate(&tc, &raw.title, &target, ot).await {
                     Ok(r) => {
+                        let translated = r.text != raw.title;
                         self.monitor.write().await.update_log(feed_name, &lid, |l| {
-                            l.status = LogStatus::Completed;
-                            l.prompt_tokens = Some(r.usage.prompt_tokens);
-                            l.completion_tokens = Some(r.usage.completion_tokens);
+                            if translated {
+                                l.status = LogStatus::Completed;
+                                l.prompt_tokens = Some(r.usage.prompt_tokens);
+                                l.completion_tokens = Some(r.usage.completion_tokens);
+                            } else {
+                                l.status =
+                                    LogStatus::Failed("model returned untranslated text".into());
+                            }
                         });
-                        total_translation_tokens +=
-                            r.usage.prompt_tokens + r.usage.completion_tokens;
-                        self.monitor.write().await.add_token_usage(
-                            feed_name,
-                            &model,
-                            r.usage.prompt_tokens,
-                            r.usage.completion_tokens,
-                        );
-                        (r.text, true)
+                        if translated {
+                            total_translation_tokens +=
+                                r.usage.prompt_tokens + r.usage.completion_tokens;
+                            self.monitor.write().await.add_token_usage(
+                                feed_name,
+                                &model,
+                                r.usage.prompt_tokens,
+                                r.usage.completion_tokens,
+                            );
+                        }
+                        (
+                            if translated {
+                                r.text
+                            } else {
+                                raw.title.clone()
+                            },
+                            translated,
+                        )
                     }
                     Err(e) => {
                         self.monitor.write().await.update_log(feed_name, &lid, |l| {
@@ -132,20 +147,35 @@ impl Scheduler {
                 let ot = mtok(self.monitor.clone(), feed_name.to_string(), lid.clone());
                 match translate::translate(&tc, &raw.content, &target, ot).await {
                     Ok(r) => {
+                        let translated = r.text != raw.content;
                         self.monitor.write().await.update_log(feed_name, &lid, |l| {
-                            l.status = LogStatus::Completed;
-                            l.prompt_tokens = Some(r.usage.prompt_tokens);
-                            l.completion_tokens = Some(r.usage.completion_tokens);
+                            if translated {
+                                l.status = LogStatus::Completed;
+                                l.prompt_tokens = Some(r.usage.prompt_tokens);
+                                l.completion_tokens = Some(r.usage.completion_tokens);
+                            } else {
+                                l.status =
+                                    LogStatus::Failed("model returned untranslated text".into());
+                            }
                         });
-                        total_translation_tokens +=
-                            r.usage.prompt_tokens + r.usage.completion_tokens;
-                        self.monitor.write().await.add_token_usage(
-                            feed_name,
-                            &model,
-                            r.usage.prompt_tokens,
-                            r.usage.completion_tokens,
-                        );
-                        (r.text, true)
+                        if translated {
+                            total_translation_tokens +=
+                                r.usage.prompt_tokens + r.usage.completion_tokens;
+                            self.monitor.write().await.add_token_usage(
+                                feed_name,
+                                &model,
+                                r.usage.prompt_tokens,
+                                r.usage.completion_tokens,
+                            );
+                        }
+                        (
+                            if translated {
+                                r.text
+                            } else {
+                                raw.content.clone()
+                            },
+                            translated,
+                        )
                     }
                     Err(e) => {
                         self.monitor.write().await.update_log(feed_name, &lid, |l| {

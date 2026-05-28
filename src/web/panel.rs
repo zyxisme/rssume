@@ -282,6 +282,7 @@ async fn settings() -> Result<Html<String>, crate::error::AppError> {
                 api_key: "".into(),
                 base_url: "".into(),
                 prompt_append: None,
+                max_tokens: None,
             },
             summary: crate::config::LlmProviderConfig {
                 provider: "".into(),
@@ -289,6 +290,7 @@ async fn settings() -> Result<Html<String>, crate::error::AppError> {
                 api_key: "".into(),
                 base_url: "".into(),
                 prompt_append: None,
+                max_tokens: None,
             },
         },
         feeds: vec![],
