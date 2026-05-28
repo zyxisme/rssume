@@ -38,7 +38,10 @@ async fn chat(
     system_prompt: &str,
     user_prompt: &str,
 ) -> Result<String, crate::error::AppError> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| crate::error::AppError::Llm(format!("Failed to create HTTP client: {}", e)))?;
     let body = ChatRequest {
         model: config.model.clone(),
         messages: vec![
