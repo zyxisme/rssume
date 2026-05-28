@@ -103,6 +103,7 @@ impl Scheduler {
                 let monitor = monitor.clone();
                 let feed_name = feed_name_owned.clone();
 
+                let title = raw.title.clone();
                 tokio::spawn(async move {
                     let result = process_single_article(
                         &feed_name,
@@ -114,20 +115,20 @@ impl Scheduler {
                         monitor.clone(),
                     )
                     .await;
-                    (feed_name, result)
+                    (feed_name, title, result)
                 })
             })
             .collect();
 
         for handle in handles {
             match handle.await {
-                Ok((feed_name, Ok(article))) => {
-                    let title = article.original_title.clone();
+                Ok((feed_name, title, Ok(article))) => {
                     feed_data.articles.push(article);
                     monitor.write().await.complete_article(&feed_name, &title);
                 }
-                Ok((feed_name, Err(e))) => {
+                Ok((feed_name, title, Err(e))) => {
                     tracing::error!("Article processing failed '{}': {}", feed_name, e);
+                    monitor.write().await.complete_article(&feed_name, &title);
                 }
                 Err(e) => {
                     tracing::error!("Task join error: {}", e);
