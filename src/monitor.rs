@@ -101,11 +101,11 @@ impl Monitor {
     pub fn active_translations(&self) -> Vec<(String, &TranslationLog)> {
         self.translation_logs
             .iter()
-            .filter_map(|(f, logs)| {
+            .flat_map(|(f, logs)| {
                 logs.iter()
                     .rev()
-                    .find(|l| matches!(l.status, LogStatus::Started | LogStatus::Streaming { .. }))
-                    .map(|l| (f.clone(), l))
+                    .filter(|l| matches!(l.status, LogStatus::Started | LogStatus::Streaming { .. }))
+                    .map(move |l| (f.clone(), l))
             })
             .collect()
     }

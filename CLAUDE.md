@@ -62,6 +62,8 @@ Design system: Vercel-inspired (see DESIGN.md)
 - CSS variables for all tokens
 - Server-side rendered with Tera + htmx for interactivity
 - No JavaScript build step
+- **htmx polling**: decouple trigger from content — empty div with `hx-get`/`hx-trigger` targets a
+  separate `div id="..."` via `hx-target`. Never put polling attributes on the swapped content.
 
 ## LLM Integration
 
@@ -112,5 +114,7 @@ cargo build --release
 ## Release & Versioning
 
 - Default version bump: `0.0.1` unless user specifies otherwise
-- After `cargo publish`: commit Cargo.lock immediately — publish updates it and leaves working tree dirty
+- Pre-publish: version bump → `cargo fmt --check && cargo clippy --all-targets` → commit
+  Cargo.toml + Cargo.lock → `cargo publish` → push + tag. Publish on a clean tree, don't
+  use `--allow-dirty`.
 - Release CI triggers on `v*` tag push, builds 4 targets, uploads to GitHub Releases

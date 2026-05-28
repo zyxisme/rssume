@@ -8,6 +8,9 @@
         <span>{{ feed.translated }} translated</span>
         {% if feed.status is starting_with('Translating') %}
         <span>Translating {{ feed.translating_completed }}/{{ feed.translating_total }} ({{ feed.translating_in_progress | length }} in progress)</span>
+        {% for title in feed.translating_in_progress %}
+        <span class="badge">{{ title | truncate(length=30) }}</span>
+        {% endfor %}
         {% elif feed.status == 'Fetching' %}
         <span>Fetching...</span>
         {% elif feed.last_fetch_at %}

@@ -7,6 +7,7 @@ use std::sync::Arc;
 use tokio::sync::{RwLock, Semaphore};
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub struct Scheduler {
     config: Arc<RwLock<Config>>,
     monitor: Arc<RwLock<Monitor>>,
@@ -168,7 +169,7 @@ impl Scheduler {
         let handles: Vec<_> = feeds
             .into_iter()
             .map(|(name, url)| {
-                let scheduler = self.clone_handle();
+                let scheduler = self.clone();
                 tokio::spawn(async move {
                     scheduler.process_feed(&name, &url).await;
                 })
@@ -179,14 +180,6 @@ impl Scheduler {
             if let Err(e) = handle.await {
                 tracing::error!("Feed task join error: {}", e);
             }
-        }
-    }
-
-    fn clone_handle(&self) -> Self {
-        Scheduler {
-            config: self.config.clone(),
-            monitor: self.monitor.clone(),
-            semaphore: self.semaphore.clone(),
         }
     }
 

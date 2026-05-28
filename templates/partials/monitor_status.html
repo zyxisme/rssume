@@ -9,6 +9,9 @@
             {{ feed.articles }} articles &middot;
             {% if feed.status is starting_with('Translating') %}
                 Translating {{ feed.translating_completed }}/{{ feed.translating_total }} ({{ feed.translating_in_progress | length }} in progress)
+                {% for title in feed.translating_in_progress %}
+                <span class="badge">{{ title | truncate(length=30) }}</span>
+                {% endfor %}
             {% elif feed.status == 'Fetching' %}
                 Fetching...
             {% elif feed.last_fetch_at %}
