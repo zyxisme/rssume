@@ -28,6 +28,7 @@ src/
 ├── lang.rs          # Language detection via whatlang
 ├── storage.rs       # TOML file read/write for article data
 ├── scheduler.rs     # Periodic RSS polling with configurable intervals
+├── monitor.rs       # Shared runtime state (feed status, translation logs, token usage)
 ├── rss/
 │   ├── mod.rs
 │   ├── fetch.rs     # Fetch and parse RSS/Atom feeds
@@ -83,7 +84,9 @@ cargo build --release
 
 - Push/PR CI (`.github/workflows/ci.yml`): fmt → clippy → test(3os) + build(4 targets), Windows uses debug profile for speed
 - Release CI (`.github/workflows/release.yml`): triggered by `v*` tags, builds 4 targets, publishes via `softprops/action-gh-release`
-- All build targets upload single-binary artifacts via `upload-artifact@v5`
+- `RUSTFLAGS: -Dwarnings` in CI — all warnings are fatal, must pass `cargo fmt --check && cargo clippy --all-targets` cleanly before pushing
+- Check CI status via API if `gh` CLI not authenticated: `curl -s "https://api.github.com/repos/zyxisme/rssume/commits/<sha>/check-runs"`
+- Fast feedback: push to trigger CI then check results — CI runners are faster than local builds
 
 ## Deployment Model
 
@@ -98,3 +101,10 @@ cargo build --release
 - Module visibility: keep internals private, expose only what's needed
 - Async everywhere: all I/O is async via tokio
 - Single binary: no separate server/worker processes
+- **Shared state**: `Arc<RwLock<Monitor>>` in `AppState { config, monitor }`, passed to scheduler + web
+- **axum 0.8 state**: uses `Extension<Arc<AppState>>` (not `State`) for routers needing shared access
+- **LLM streaming**: `resp.bytes_stream()` with SSE parsing, 60s idle timeout per chunk
+- **Article compat**: new fields use `#[serde(default)]` so existing TOML data deserializes fine
+- **Templates**: `include_str!()` at compile time + `tera.add_raw_template()` in `tera_instance()`
+- **Target locale**: `zh_CN` POSIX format (not ISO 639-3 `zho`), passed directly to LLM in translate prompt
+- **Lang detection**: `normalize_code()` splits on `-` and `_`, maps 11 codes (zh/en/ja/ko/fr/de/es/ru/ar/pt/it) to ISO 639-3
