@@ -84,10 +84,12 @@ impl Config {
     pub fn load() -> Result<Self, crate::error::AppError> {
         let path = config_path();
         if !path.exists() {
-            return Err(crate::error::AppError::Config(format!(
-                "Config file not found at {}. Create one with your settings.",
-                path.display()
-            )));
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(&path, default_config_toml())?;
+            tracing::warn!("Created default config at {}", path.display());
+            tracing::warn!("Edit this file to configure LLM API keys and feeds.");
         }
         let content = std::fs::read_to_string(&path)?;
         let resolved = resolve_env_vars(&content);

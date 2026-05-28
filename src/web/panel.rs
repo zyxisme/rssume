@@ -1,12 +1,25 @@
 use axum::response::Html;
 use axum::{Router, routing::get};
-use tera::Context;
+use tera::{Context, Tera};
 
 pub fn router() -> Router {
     Router::new()
         .route("/panel", get(dashboard))
         .route("/panel/feed/:name", get(feed_detail))
         .route("/panel/settings", get(settings))
+}
+
+fn tera_instance() -> Result<Tera, crate::error::AppError> {
+    let mut tera = Tera::default();
+    tera.add_raw_template("base.html", include_str!("../../templates/base.html"))
+        .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
+    tera.add_raw_template("dashboard.html", include_str!("../../templates/dashboard.html"))
+        .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
+    tera.add_raw_template("feed.html", include_str!("../../templates/feed.html"))
+        .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
+    tera.add_raw_template("settings.html", include_str!("../../templates/settings.html"))
+        .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
+    Ok(tera)
 }
 
 async fn dashboard() -> Result<Html<String>, crate::error::AppError> {
@@ -39,8 +52,7 @@ async fn dashboard() -> Result<Html<String>, crate::error::AppError> {
         logging: Default::default(),
     });
 
-    let tera = tera::Tera::new("templates/**/*.html")
-        .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
+    let tera = tera_instance()?;
 
     let mut ctx = Context::new();
     ctx.insert("title", "rssume Dashboard");
@@ -59,8 +71,7 @@ async fn feed_detail(
 ) -> Result<Html<String>, crate::error::AppError> {
     let feed_data = crate::storage::FeedData::load(&name)?;
 
-    let tera = tera::Tera::new("templates/**/*.html")
-        .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
+    let tera = tera_instance()?;
 
     let mut ctx = Context::new();
     ctx.insert("title", &format!("rssume - {}", name));
@@ -103,8 +114,7 @@ async fn settings() -> Result<Html<String>, crate::error::AppError> {
         logging: Default::default(),
     });
 
-    let tera = tera::Tera::new("templates/**/*.html")
-        .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
+    let tera = tera_instance()?;
 
     let mut ctx = Context::new();
     ctx.insert("title", "rssume Settings");

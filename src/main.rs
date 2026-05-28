@@ -26,11 +26,6 @@ async fn main() {
         }
         Err(e) => {
             tracing::error!("Failed to load config: {}", e);
-            tracing::info!(
-                "Create a config file at {} with your settings.",
-                config::config_path().display()
-            );
-            tracing::info!("Default config example:\n{}", config::default_config_toml());
             std::process::exit(1);
         }
     };
