@@ -1,0 +1,21 @@
+<div class="stats-bar" hx-get="/api/stats" hx-trigger="every 5s" hx-swap="outerHTML">
+    <div class="stat-card">
+        <div class="number">{{ feeds_count }}</div><div class="label">Feeds</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ total_articles }}</div>
+        <div class="label">Articles</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ total_translated }}</div>
+        <div class="label">Translated</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ total_with_summary }}</div>
+        <div class="label">Summarized</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ total_prompt_tokens + total_completion_tokens }}</div>
+        <div class="label">Tokens</div>
+    </div>
+</div>

@@ -9,7 +9,7 @@
     <a href="/feeds/{{ feed_name }}" class="btn btn-primary" style="margin-left: 8px;">RSS Feed</a>
 </div>
 
-{% for article in articles | reverse %}
+{% for article in articles %}
 <div class="card article-item">
     <h3><a href="{{ article.link }}" target="_blank" rel="noopener" style="color: var(--ink); text-decoration: none;">{{ article.title }}</a></h3>
     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0;">

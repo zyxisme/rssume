@@ -1,0 +1,52 @@
+<div class="grid-2" style="margin-bottom:24px;">
+    {% for feed in feeds %}
+    <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span class="status-dot" style="color: {% if feed.status == 'Fetching' or feed.status starts_with 'Translating' %}#0070f3{% elif feed.status == 'Done' %}#50e3c2{% elif feed.status == 'Error' %}#ee0000{% else %}#888888{% endif %};">●</span>
+            <strong>{{ feed.name }}</strong>
+        </div>
+        <div style="font-size:13px;color:var(--mute);">
+            {{ feed.articles }} articles &middot;
+            {% if feed.status starts_with 'Translating' %}
+                Translating {{ feed.translating_current }}/{{ feed.translating_total }}: {{ feed.translating_title | truncate(length=40) }}
+            {% elif feed.status == 'Fetching' %}
+                Fetching...
+            {% elif feed.last_fetch_at %}
+                Last fetch: {{ feed.last_fetch_at | truncate(length=19) }}
+            {% else %}
+                Idle
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<h2>Active Translations</h2>
+{% if active | length > 0 %}
+<div id="active-translations">
+    {% for t in active %}
+    <div class="card" style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span><strong>{{ t.feed_name }}</strong> &mdash; {{ t.article_title | truncate(length=50) }}</span>
+            <span class="badge badge-success">{{ t.stage }}</span>
+        </div>
+        {% if t.streamed_text %}
+        <div style="margin-top:8px;font-size:13px;color:var(--mute);max-height:120px;overflow-y:auto;white-space:pre-wrap;">{{ t.streamed_text }}</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div id="active-translations">
+    <p style="color:var(--mute);">No active translations</p>
+</div>
+{% endif %}
+
+<h2 style="margin-top:24px;">Recently Completed</h2>
+<div id="recent-logs">
+    {% if recent_count > 0 %}
+    <p style="color:var(--mute);">{{ recent_count }} translations completed in this session</p>
+    {% else %}
+    <p style="color:var(--mute);">No recent translations</p>
+    {% endif %}
+</div>

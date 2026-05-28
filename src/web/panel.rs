@@ -14,7 +14,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .layer(Extension(state))
 }
 
-fn tera_instance() -> Result<Tera, crate::error::AppError> {
+pub(super) fn tera_instance() -> Result<Tera, crate::error::AppError> {
     let mut tera = Tera::default();
     tera.add_raw_template("base.html", include_str!("../../templates/base.html"))?;
     tera.add_raw_template(
@@ -28,6 +28,14 @@ fn tera_instance() -> Result<Tera, crate::error::AppError> {
     )?;
     tera.add_raw_template("monitor.html", include_str!("../../templates/monitor.html"))?;
     tera.add_raw_template("logs.html", include_str!("../../templates/logs.html"))?;
+    tera.add_raw_template(
+        "partials/stats_bar.html",
+        include_str!("../../templates/partials/stats_bar.html"),
+    )?;
+    tera.add_raw_template(
+        "partials/monitor_status.html",
+        include_str!("../../templates/partials/monitor_status.html"),
+    )?;
     Ok(tera)
 }
 
@@ -41,6 +49,7 @@ async fn dashboard(
     let mut ctx = Context::new();
     ctx.insert("title", "rssume Dashboard");
     ctx.insert("feeds", &cfg.feeds);
+    ctx.insert("feed_statuses", &mon.feeds);
     ctx.insert("stats", &stats);
     ctx.insert("total_prompt_tokens", &mon.token_usage.total_prompt_tokens);
     ctx.insert(
@@ -73,10 +82,68 @@ async fn monitor_page(
     Extension(s): Extension<Arc<AppState>>,
 ) -> Result<Html<String>, crate::error::AppError> {
     let cfg = s.config.read().await;
+    let mon = s.monitor.read().await;
     let tera = tera_instance()?;
+    let active = mon.active_translations();
+    let recent_count: usize = mon
+        .translation_logs
+        .values()
+        .map(|l| {
+            l.iter()
+                .filter(|l| {
+                    matches!(
+                        l.status,
+                        crate::monitor::LogStatus::Completed | crate::monitor::LogStatus::Failed(_)
+                    )
+                })
+                .count()
+        })
+        .sum();
+    let feeds: Vec<serde_json::Value> = cfg
+        .feeds
+        .iter()
+        .map(|f| {
+            let rt = mon.feeds.get(&f.name);
+            let d = crate::storage::FeedData::load(&f.name).ok();
+            serde_json::json!({
+                "name": f.name,
+                "status": rt.map(|r| format!("{:?}", r.status)).unwrap_or_else(|| "Idle".into()),
+                "articles": d.as_ref().map(|d| d.article_count()).unwrap_or(0),
+                "last_fetch_at": rt.and_then(|r| r.last_fetch_at.as_ref()),
+                "translating_current": match rt.map(|r| &r.status) {
+                    Some(crate::monitor::FeedStatus::Translating { current, .. }) => current,
+                    _ => &0u32,
+                },
+                "translating_total": match rt.map(|r| &r.status) {
+                    Some(crate::monitor::FeedStatus::Translating { total, .. }) => total,
+                    _ => &0u32,
+                },
+                "translating_title": match rt.map(|r| &r.status) {
+                    Some(crate::monitor::FeedStatus::Translating { current_title, .. }) => current_title,
+                    _ => "",
+                },
+            })
+        })
+        .collect();
+    let active_translations: Vec<serde_json::Value> = active
+        .iter()
+        .map(|(f, l)| {
+            serde_json::json!({
+                "feed_name": f,
+                "article_title": l.article_title,
+                "stage": format!("{:?}", l.stage),
+                "streamed_text": match &l.status {
+                    crate::monitor::LogStatus::Streaming { tokens } => tokens.clone(),
+                    _ => String::new(),
+                },
+            })
+        })
+        .collect();
     let mut ctx = Context::new();
     ctx.insert("title", "rssume Monitor");
-    ctx.insert("feeds", &cfg.feeds);
+    ctx.insert("feeds", &feeds);
+    ctx.insert("active", &active_translations);
+    ctx.insert("recent_count", &recent_count);
     Ok(Html(tera.render("monitor.html", &ctx).map_err(|e| {
         crate::error::AppError::Storage(format!("render: {}", e))
     })?))

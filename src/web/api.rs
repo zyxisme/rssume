@@ -1,7 +1,9 @@
 use crate::monitor::{LogStatus, Monitor};
+use axum::response::Html;
 use axum::{Extension, Json, Router, routing::get};
 use serde::Serialize;
 use std::sync::Arc;
+use tera::Context;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -20,29 +22,32 @@ pub fn router(state: Arc<AppState>) -> Router {
         .layer(Extension(state))
 }
 
-#[derive(Serialize)]
-struct ApiStats {
-    feeds: Vec<crate::storage::FeedStats>,
-    total_articles: usize,
-    total_translated: usize,
-    total_with_summary: usize,
-    total_prompt_tokens: u64,
-    total_completion_tokens: u64,
-}
-
 async fn get_stats(
     Extension(s): Extension<Arc<AppState>>,
-) -> Result<Json<ApiStats>, crate::error::AppError> {
+) -> Result<Html<String>, crate::error::AppError> {
     let stats = crate::storage::all_feed_stats()?;
+    let cfg = s.config.read().await;
     let tu = &s.monitor.read().await.token_usage;
-    Ok(Json(ApiStats {
-        total_articles: stats.iter().map(|x| x.article_count).sum(),
-        total_translated: stats.iter().map(|x| x.translated_count).sum(),
-        total_with_summary: stats.iter().map(|x| x.with_summary_count).sum(),
-        total_prompt_tokens: tu.total_prompt_tokens,
-        total_completion_tokens: tu.total_completion_tokens,
-        feeds: stats,
-    }))
+    let tera = super::panel::tera_instance()?;
+    let mut ctx = Context::new();
+    ctx.insert("feeds_count", &cfg.feeds.len());
+    ctx.insert(
+        "total_articles",
+        &stats.iter().map(|x| x.article_count).sum::<usize>(),
+    );
+    ctx.insert(
+        "total_translated",
+        &stats.iter().map(|x| x.translated_count).sum::<usize>(),
+    );
+    ctx.insert(
+        "total_with_summary",
+        &stats.iter().map(|x| x.with_summary_count).sum::<usize>(),
+    );
+    ctx.insert("total_prompt_tokens", &tu.total_prompt_tokens);
+    ctx.insert("total_completion_tokens", &tu.total_completion_tokens);
+    Ok(Html(tera.render("partials/stats_bar.html", &ctx).map_err(
+        |e| crate::error::AppError::Storage(format!("render: {}", e)),
+    )?))
 }
 
 #[derive(Serialize)]
@@ -94,18 +99,11 @@ async fn monitor_status(Extension(s): Extension<Arc<AppState>>) -> Json<Vec<serd
     )
 }
 
-async fn monitor_translating(Extension(s): Extension<Arc<AppState>>) -> Json<serde_json::Value> {
+async fn monitor_translating(
+    Extension(s): Extension<Arc<AppState>>,
+) -> Result<Html<String>, crate::error::AppError> {
     let mon = s.monitor.read().await;
     let cfg = s.config.read().await;
-    let feeds_status: Vec<_> = cfg
-        .feeds
-        .iter()
-        .filter_map(|f| {
-            mon.feeds
-                .get(&f.name)
-                .map(|s| (f.name.clone(), s.status.clone()))
-        })
-        .collect();
     let active = mon.active_translations();
     let recent_count: usize = mon
         .translation_logs
@@ -116,14 +114,55 @@ async fn monitor_translating(Extension(s): Extension<Arc<AppState>>) -> Json<ser
                 .count()
         })
         .sum();
-    Json(serde_json::json!({
-        "feeds_status": feeds_status,
-        "active": active.iter().map(|(f, l)| serde_json::json!({
-            "feed_name": f,
-            "log": l,
-        })).collect::<Vec<_>>(),
-        "recent_count": recent_count,
-    }))
+    let feeds: Vec<serde_json::Value> = cfg
+        .feeds
+        .iter()
+        .map(|f| {
+            let rt = mon.feeds.get(&f.name);
+            let d = crate::storage::FeedData::load(&f.name).ok();
+            serde_json::json!({
+                "name": f.name,
+                "status": rt.map(|r| format!("{:?}", r.status)).unwrap_or_else(|| "Idle".into()),
+                "articles": d.as_ref().map(|d| d.article_count()).unwrap_or(0),
+                "last_fetch_at": rt.and_then(|r| r.last_fetch_at.as_ref()),
+                "translating_current": match rt.map(|r| &r.status) {
+                    Some(crate::monitor::FeedStatus::Translating { current, .. }) => current,
+                    _ => &0u32,
+                },
+                "translating_total": match rt.map(|r| &r.status) {
+                    Some(crate::monitor::FeedStatus::Translating { total, .. }) => total,
+                    _ => &0u32,
+                },
+                "translating_title": match rt.map(|r| &r.status) {
+                    Some(crate::monitor::FeedStatus::Translating { current_title, .. }) => current_title,
+                    _ => "",
+                },
+            })
+        })
+        .collect();
+    let active_translations: Vec<serde_json::Value> = active
+        .iter()
+        .map(|(f, l)| {
+            serde_json::json!({
+                "feed_name": f,
+                "article_title": l.article_title,
+                "stage": format!("{:?}", l.stage),
+                "streamed_text": match &l.status {
+                    crate::monitor::LogStatus::Streaming { tokens } => tokens.clone(),
+                    _ => String::new(),
+                },
+            })
+        })
+        .collect();
+    let tera = super::panel::tera_instance()?;
+    let mut ctx = Context::new();
+    ctx.insert("feeds", &feeds);
+    ctx.insert("active", &active_translations);
+    ctx.insert("recent_count", &recent_count);
+    Ok(Html(
+        tera.render("partials/monitor_status.html", &ctx)
+            .map_err(|e| crate::error::AppError::Storage(format!("render: {}", e)))?,
+    ))
 }
 
 async fn monitor_logs(

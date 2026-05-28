@@ -214,17 +214,21 @@ impl Scheduler {
                 enclosure,
             };
             feed_data.articles.push(article);
+
+            if let Err(e) = feed_data.save(feed_name) {
+                tracing::error!("Save failed '{}': {}", feed_name, e);
+            }
         }
 
-        if let Err(e) = feed_data.save(feed_name) {
-            tracing::error!("Save failed '{}': {}", feed_name, e);
-        } else {
-            tracing::info!(
-                "Feed '{}' processed: {} total",
-                feed_name,
-                feed_data.article_count()
-            );
-        }
+        feed_data
+            .articles
+            .sort_by(|a, b| b.published_at.cmp(&a.published_at));
+
+        tracing::info!(
+            "Feed '{}' processed: {} total",
+            feed_name,
+            feed_data.article_count()
+        );
         self.monitor
             .write()
             .await
