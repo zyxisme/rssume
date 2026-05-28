@@ -1,41 +1,45 @@
+<div align="center">
+
 # rssume
 
-RSS middleware with AI-powered translation and summarization.
+[![License](https://img.shields.io/badge/license-MIT-blue?style=flat)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-2024%20edition-%23dea584?style=flat)](https://www.rust-lang.org)
+[![CI](https://github.com/zyxisme/rssume/actions/workflows/ci.yml/badge.svg)](https://github.com/zyxisme/rssume/actions/workflows/ci.yml)
 
-Monitor multiple RSS feeds → auto-detect language → translate via LLM → add AI summaries → export enhanced RSS feeds. Built-in web dashboard with Vercel-inspired design.
+**RSS middleware with AI-powered translation and summarization.**
+
+Monitor feeds → detect language → translate via LLM → add AI summaries → re-export as RSS
+
+</div>
 
 ## Features
 
-- Multi-source RSS monitoring with configurable polling intervals
-- Automatic language detection (whatlang)
-- LLM-powered translation for non-target-language articles
-- AI-generated one-sentence summaries prepended to each article
-- One-to-one RSS export via HTTP endpoints
-- Web dashboard: feed management, article browsing, statistics, service control
-- Multi-provider LLM support (OpenAI-compatible API)
-- Cross-platform (Linux, macOS, Windows)
-- Single binary, zero runtime dependencies
+- **Multi-source RSS** — monitor multiple feeds with configurable polling intervals
+- **Language detection** — automatic recognition via whatlang, 70+ languages
+- **AI translation** — LLM-powered translation to your target language (OpenAI-compatible API)
+- **AI summaries** — one-sentence TL;DR prepended to every article
+- **RSS export** — one-to-one HTTP endpoints, compatible with any RSS reader
+- **Web dashboard** — feed management, article browsing, statistics, service control
+- **Multi-provider LLM** — OpenAI, DeepSeek, Groq, or any OpenAI-compatible endpoint
+- **Single binary** — zero runtime dependencies, cross-platform (Linux / macOS / Windows)
 
 ## Quick Start
 
 ```bash
-# Install
+# Install from source
 cargo install rssume
 
-# Create config
-mkdir -p ~/.config/rssume
-rssume --print-default-config > ~/.config/rssume/config.toml
-# Edit config.toml: set API keys, add RSS feeds
-
-# Run
+# Run — auto-creates default config on first launch
 rssume
-# Web panel at http://localhost:3000/panel
-# RSS feeds at http://localhost:3000/feeds/:name
 ```
+
+Open `http://localhost:3000/panel` in your browser, configure your feeds and LLM settings directly from the dashboard.
+
+RSS feeds are exported at `http://localhost:3000/feeds/:name`.
 
 ## Configuration
 
-Edit `~/.config/rssume/config.toml`:
+`~/.config/rssume/config.toml` (auto-created on first run):
 
 ```toml
 [server]
@@ -69,7 +73,7 @@ Use `${ENV_VAR}` syntax to reference environment variables for API keys.
 ## Build from Source
 
 ```bash
-git clone https://github.com/rssume/rssume
+git clone https://github.com/zyxisme/rssume
 cd rssume
 cargo build --release
 ```
