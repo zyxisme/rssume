@@ -292,6 +292,7 @@ async fn settings() -> Result<Html<String>, crate::error::AppError> {
                 prompt_append: None,
                 max_tokens: None,
             },
+            max_concurrent_requests: 3,
         },
         feeds: vec![],
         logging: Default::default(),

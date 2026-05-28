@@ -29,6 +29,8 @@ pub struct LanguageConfig {
 pub struct LlmConfig {
     pub translation: LlmProviderConfig,
     pub summary: LlmProviderConfig,
+    #[serde(default = "default_max_concurrent_requests")]
+    pub max_concurrent_requests: usize,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -81,6 +83,9 @@ fn default_interval() -> u64 {
 fn default_log_level() -> String {
     "info".into()
 }
+fn default_max_concurrent_requests() -> usize {
+    3
+}
 
 impl Config {
     pub fn load() -> Result<Self, crate::error::AppError> {
@@ -131,6 +136,9 @@ port = 3000
 [language]
 # Target language code (locale format e.g. zh_CN, en, ja)
 target = "zh_CN"
+
+[llm]
+max_concurrent_requests = 3
 
 [llm.translation]
 provider = "openai"
