@@ -16,14 +16,14 @@
 ## 功能
 
 - **多源订阅** — 支持多个 RSS 源，可独立配置轮询间隔
-- **语言检测** — 基于 whatlang 的自动语言识别，覆盖 70+ 语言
+
 - **AI 翻译** — LLM 流式翻译，将文章标题和正文转为目标语言（兼容 OpenAI API）
 - **AI 摘要** — 每篇文章自动生成一句话 TL;DR，前置插入正文
 - **RSS 增强导出** — content:encoded、dc:creator、category、enclosure 等扩展字段，兼容所有主流 RSS 阅读器
 - **Web 控制台** — 订阅源管理、文章浏览、统计数据、服务控制
 - **实时翻译监控** — `/panel/monitor` 实时展示翻译进度、LLM token 流输出、历史日志
 - **Token 用量统计** — 按模型和订阅源统计 token 消耗，持久化保存
-- **多 LLM 厂商** — 支持 OpenAI、DeepSeek、Groq 等兼容接口
+
 - **单二进制** — 零运行时依赖，跨平台（Linux / macOS / Windows）
 
 ## 快速开始
