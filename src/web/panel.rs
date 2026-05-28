@@ -13,12 +13,18 @@ fn tera_instance() -> Result<Tera, crate::error::AppError> {
     let mut tera = Tera::default();
     tera.add_raw_template("base.html", include_str!("../../templates/base.html"))
         .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
-    tera.add_raw_template("dashboard.html", include_str!("../../templates/dashboard.html"))
-        .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
+    tera.add_raw_template(
+        "dashboard.html",
+        include_str!("../../templates/dashboard.html"),
+    )
+    .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
     tera.add_raw_template("feed.html", include_str!("../../templates/feed.html"))
         .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
-    tera.add_raw_template("settings.html", include_str!("../../templates/settings.html"))
-        .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
+    tera.add_raw_template(
+        "settings.html",
+        include_str!("../../templates/settings.html"),
+    )
+    .map_err(|e| crate::error::AppError::Storage(format!("Template error: {}", e)))?;
     Ok(tera)
 }
 
