@@ -111,7 +111,11 @@ impl Monitor {
     }
     pub fn start_article(&mut self, feed_name: &str, title: &str, total: u32) {
         self.feeds.entry(feed_name.to_string()).and_modify(|s| {
-            if let FeedStatus::Translating { ref mut in_progress, .. } = s.status {
+            if let FeedStatus::Translating {
+                ref mut in_progress,
+                ..
+            } = s.status
+            {
                 in_progress.push(title.to_string());
             } else {
                 s.status = FeedStatus::Translating {
@@ -124,7 +128,12 @@ impl Monitor {
     }
     pub fn complete_article(&mut self, feed_name: &str, title: &str) {
         self.feeds.entry(feed_name.to_string()).and_modify(|s| {
-            if let FeedStatus::Translating { ref mut completed, ref mut in_progress, .. } = s.status {
+            if let FeedStatus::Translating {
+                ref mut completed,
+                ref mut in_progress,
+                ..
+            } = s.status
+            {
                 *completed += 1;
                 in_progress.retain(|t| t != title);
             }

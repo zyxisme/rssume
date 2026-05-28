@@ -4,17 +4,26 @@ use crate::monitor::{FeedStatus, LogStatus, Monitor, TranslationLog, Translation
 use crate::rss::fetch;
 use crate::storage::{Article, Enclosure, FeedData};
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, Semaphore};
 use uuid::Uuid;
 
 pub struct Scheduler {
     config: Arc<RwLock<Config>>,
     monitor: Arc<RwLock<Monitor>>,
+    semaphore: Arc<Semaphore>,
 }
 
 impl Scheduler {
     pub fn new(config: Arc<RwLock<Config>>, monitor: Arc<RwLock<Monitor>>) -> Self {
-        Scheduler { config, monitor }
+        let max_concurrent = config
+            .try_read()
+            .map(|c| c.llm.max_concurrent_requests)
+            .unwrap_or(3);
+        Scheduler {
+            config,
+            monitor,
+            semaphore: Arc::new(Semaphore::new(max_concurrent)),
+        }
     }
 
     pub async fn process_feed(&self, feed_name: &str, feed_url: &str) {
@@ -67,204 +76,72 @@ impl Scheduler {
         }
 
         let total = new_articles.len() as u32;
+
+        self.monitor.write().await.set_status(
+            feed_name,
+            FeedStatus::Translating {
+                completed: 0,
+                total,
+                in_progress: vec![],
+            },
+        );
+
         let tc = config.llm.translation.clone();
         let sc = config.llm.summary.clone();
         let target = config.language.target.clone();
+        let semaphore = self.semaphore.clone();
+        let monitor = self.monitor.clone();
+        let feed_name_owned = feed_name.to_string();
 
-        for (i, raw) in new_articles.into_iter().enumerate() {
-            self.monitor.write().await.set_status(
-                feed_name,
-                FeedStatus::Translating {
-                    current: i as u32 + 1,
-                    total,
-                    current_title: raw.title.clone(),
-                },
-            );
+        let handles: Vec<_> = new_articles
+            .into_iter()
+            .map(|raw| {
+                let tc = tc.clone();
+                let sc = sc.clone();
+                let target = target.clone();
+                let semaphore = semaphore.clone();
+                let monitor = monitor.clone();
+                let feed_name = feed_name_owned.clone();
 
-            let source_lang =
-                crate::lang::detect(&raw.content).or_else(|| crate::lang::detect(&raw.title));
-            let needs_ct =
-                !raw.content.is_empty() && crate::lang::needs_translation(&raw.content, &target);
-            let needs_tt = crate::lang::needs_translation(&raw.title, &target);
-            let model = tc.model.clone();
-            let sum_model = sc.model.clone();
-            let mut total_translation_tokens: u32 = 0;
+                tokio::spawn(async move {
+                    let result = process_single_article(
+                        &feed_name,
+                        raw,
+                        &tc,
+                        &sc,
+                        &target,
+                        semaphore,
+                        monitor.clone(),
+                    )
+                    .await;
+                    (feed_name, result)
+                })
+            })
+            .collect();
 
-            // ---- Title Translation ----
-            let (final_title, tt) = if needs_tt {
-                let log = mlog(&raw.title, TranslationStage::TranslatingTitle, &model);
-                let lid = log.id.clone();
-                self.monitor.write().await.add_log(feed_name, log);
-                let ot = mtok(self.monitor.clone(), feed_name.to_string(), lid.clone());
-                match translate::translate(&tc, &raw.title, &target, ot).await {
-                    Ok(r) => {
-                        let translated = r.text != raw.title;
-                        self.monitor.write().await.update_log(feed_name, &lid, |l| {
-                            if translated {
-                                l.status = LogStatus::Completed;
-                                l.prompt_tokens = Some(r.usage.prompt_tokens);
-                                l.completion_tokens = Some(r.usage.completion_tokens);
-                            } else {
-                                l.status =
-                                    LogStatus::Failed("model returned untranslated text".into());
-                            }
-                        });
-                        if translated {
-                            total_translation_tokens +=
-                                r.usage.prompt_tokens + r.usage.completion_tokens;
-                            self.monitor.write().await.add_token_usage(
-                                feed_name,
-                                &model,
-                                r.usage.prompt_tokens,
-                                r.usage.completion_tokens,
-                            );
-                        }
-                        (
-                            if translated {
-                                r.text
-                            } else {
-                                raw.title.clone()
-                            },
-                            translated,
-                        )
-                    }
-                    Err(e) => {
-                        self.monitor.write().await.update_log(feed_name, &lid, |l| {
-                            l.status = LogStatus::Failed(e.to_string());
-                        });
-                        (raw.title.clone(), false)
-                    }
+        for handle in handles {
+            match handle.await {
+                Ok((feed_name, Ok(article))) => {
+                    let title = article.original_title.clone();
+                    feed_data.articles.push(article);
+                    monitor.write().await.complete_article(&feed_name, &title);
                 }
-            } else {
-                (raw.title.clone(), false)
-            };
-
-            // ---- Content Translation ----
-            let (final_content, ct) = if needs_ct {
-                let log = mlog(&raw.title, TranslationStage::TranslatingContent, &model);
-                let lid = log.id.clone();
-                self.monitor.write().await.add_log(feed_name, log);
-                let ot = mtok(self.monitor.clone(), feed_name.to_string(), lid.clone());
-                match translate::translate(&tc, &raw.content, &target, ot).await {
-                    Ok(r) => {
-                        let translated = r.text != raw.content;
-                        self.monitor.write().await.update_log(feed_name, &lid, |l| {
-                            if translated {
-                                l.status = LogStatus::Completed;
-                                l.prompt_tokens = Some(r.usage.prompt_tokens);
-                                l.completion_tokens = Some(r.usage.completion_tokens);
-                            } else {
-                                l.status =
-                                    LogStatus::Failed("model returned untranslated text".into());
-                            }
-                        });
-                        if translated {
-                            total_translation_tokens +=
-                                r.usage.prompt_tokens + r.usage.completion_tokens;
-                            self.monitor.write().await.add_token_usage(
-                                feed_name,
-                                &model,
-                                r.usage.prompt_tokens,
-                                r.usage.completion_tokens,
-                            );
-                        }
-                        (
-                            if translated {
-                                r.text
-                            } else {
-                                raw.content.clone()
-                            },
-                            translated,
-                        )
-                    }
-                    Err(e) => {
-                        self.monitor.write().await.update_log(feed_name, &lid, |l| {
-                            l.status = LogStatus::Failed(e.to_string());
-                        });
-                        (raw.content.clone(), false)
-                    }
+                Ok((feed_name, Err(e))) => {
+                    tracing::error!("Article processing failed '{}': {}", feed_name, e);
                 }
-            } else {
-                (raw.content.clone(), false)
-            };
-
-            // ---- Summarization ----
-            let summary = {
-                let log = mlog(&final_title, TranslationStage::Summarizing, &sum_model);
-                let lid = log.id.clone();
-                self.monitor.write().await.add_log(feed_name, log);
-                let ot = mtok(self.monitor.clone(), feed_name.to_string(), lid.clone());
-                match summarize::summarize(&sc, &final_title, &final_content, ot).await {
-                    Ok(r) => {
-                        self.monitor.write().await.update_log(feed_name, &lid, |l| {
-                            l.status = LogStatus::Completed;
-                            l.prompt_tokens = Some(r.usage.prompt_tokens);
-                            l.completion_tokens = Some(r.usage.completion_tokens);
-                        });
-                        self.monitor.write().await.add_token_usage(
-                            feed_name,
-                            &sum_model,
-                            r.usage.prompt_tokens,
-                            r.usage.completion_tokens,
-                        );
-                        Some(r.text)
-                    }
-                    Err(e) => {
-                        self.monitor.write().await.update_log(feed_name, &lid, |l| {
-                            l.status = LogStatus::Failed(e.to_string());
-                        });
-                        None
-                    }
+                Err(e) => {
+                    tracing::error!("Task join error: {}", e);
                 }
-            };
-
-            let enclosure = raw.media_urls.first().map(|m| Enclosure {
-                url: m.url.clone(),
-                content_type: m.content_type.clone(),
-                length: m.length,
-            });
-
-            let translation_tokens = if total_translation_tokens > 0 {
-                Some(total_translation_tokens)
-            } else {
-                None
-            };
-            let article = Article {
-                id: raw
-                    .guid
-                    .clone()
-                    .unwrap_or_else(|| Uuid::new_v4().to_string()),
-                feed_name: feed_name.to_string(),
-                title: final_title,
-                original_title: raw.title,
-                link: raw.link,
-                content: final_content,
-                original_content: raw.content,
-                summary,
-                translated: ct,
-                translated_title: tt,
-                source_lang,
-                published_at: raw.published_at.clone(),
-                published_at_rfc2822: chrono::DateTime::parse_from_rfc2822(&raw.published_at)
-                    .ok()
-                    .map(|dt| dt.to_rfc2822()),
-                processed_at: chrono::Utc::now().to_rfc3339(),
-                author: raw.author,
-                categories: raw.categories,
-                translation_model: if ct || tt { Some(model.clone()) } else { None },
-                translation_tokens,
-                enclosure,
-            };
-            feed_data.articles.push(article);
-
-            if let Err(e) = feed_data.save(feed_name) {
-                tracing::error!("Save failed '{}': {}", feed_name, e);
             }
         }
 
         feed_data
             .articles
             .sort_by(|a, b| b.published_at.cmp(&a.published_at));
+
+        if let Err(e) = feed_data.save(feed_name) {
+            tracing::error!("Save failed '{}': {}", feed_name, e);
+        }
 
         tracing::info!(
             "Feed '{}' processed: {} total",
@@ -279,10 +156,36 @@ impl Scheduler {
 
     pub async fn process_all(&self) {
         let cfg = self.config.read().await;
-        for f in &cfg.feeds {
-            if f.enabled {
-                self.process_feed(&f.name, &f.url).await;
+        let feeds: Vec<_> = cfg
+            .feeds
+            .iter()
+            .filter(|f| f.enabled)
+            .map(|f| (f.name.clone(), f.url.clone()))
+            .collect();
+        drop(cfg);
+
+        let handles: Vec<_> = feeds
+            .into_iter()
+            .map(|(name, url)| {
+                let scheduler = self.clone_handle();
+                tokio::spawn(async move {
+                    scheduler.process_feed(&name, &url).await;
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            if let Err(e) = handle.await {
+                tracing::error!("Feed task join error: {}", e);
             }
+        }
+    }
+
+    fn clone_handle(&self) -> Self {
+        Scheduler {
+            config: self.config.clone(),
+            monitor: self.monitor.clone(),
+            semaphore: self.semaphore.clone(),
         }
     }
 
@@ -332,4 +235,190 @@ fn mtok(monitor: Arc<RwLock<Monitor>>, feed: String, lid: String) -> impl FnMut(
             });
         });
     }
+}
+
+async fn process_single_article(
+    feed_name: &str,
+    raw: crate::rss::fetch::RawArticle,
+    tc: &crate::config::LlmProviderConfig,
+    sc: &crate::config::LlmProviderConfig,
+    target: &str,
+    semaphore: Arc<Semaphore>,
+    monitor: Arc<RwLock<Monitor>>,
+) -> Result<Article, crate::error::AppError> {
+    let title = raw.title.clone();
+    monitor.write().await.start_article(feed_name, &title, 1);
+
+    let source_lang = crate::lang::detect(&raw.content).or_else(|| crate::lang::detect(&raw.title));
+    let needs_ct = !raw.content.is_empty() && crate::lang::needs_translation(&raw.content, target);
+    let needs_tt = crate::lang::needs_translation(&raw.title, target);
+    let model = tc.model.clone();
+    let sum_model = sc.model.clone();
+    let mut total_translation_tokens: u32 = 0;
+
+    // ---- Title Translation ----
+    let (final_title, tt) = if needs_tt {
+        let _permit = semaphore.acquire().await.unwrap();
+        let log = mlog(&raw.title, TranslationStage::TranslatingTitle, &model);
+        let lid = log.id.clone();
+        monitor.write().await.add_log(feed_name, log);
+        let ot = mtok(monitor.clone(), feed_name.to_string(), lid.clone());
+        match translate::translate(tc, &raw.title, target, ot).await {
+            Ok(r) => {
+                let translated = r.text != raw.title;
+                monitor.write().await.update_log(feed_name, &lid, |l| {
+                    if translated {
+                        l.status = LogStatus::Completed;
+                        l.prompt_tokens = Some(r.usage.prompt_tokens);
+                        l.completion_tokens = Some(r.usage.completion_tokens);
+                    } else {
+                        l.status = LogStatus::Failed("model returned untranslated text".into());
+                    }
+                });
+                if translated {
+                    total_translation_tokens += r.usage.prompt_tokens + r.usage.completion_tokens;
+                    monitor.write().await.add_token_usage(
+                        feed_name,
+                        &model,
+                        r.usage.prompt_tokens,
+                        r.usage.completion_tokens,
+                    );
+                }
+                (
+                    if translated {
+                        r.text
+                    } else {
+                        raw.title.clone()
+                    },
+                    translated,
+                )
+            }
+            Err(e) => {
+                monitor.write().await.update_log(feed_name, &lid, |l| {
+                    l.status = LogStatus::Failed(e.to_string());
+                });
+                (raw.title.clone(), false)
+            }
+        }
+    } else {
+        (raw.title.clone(), false)
+    };
+
+    // ---- Content Translation ----
+    let (final_content, ct) = if needs_ct {
+        let _permit = semaphore.acquire().await.unwrap();
+        let log = mlog(&raw.title, TranslationStage::TranslatingContent, &model);
+        let lid = log.id.clone();
+        monitor.write().await.add_log(feed_name, log);
+        let ot = mtok(monitor.clone(), feed_name.to_string(), lid.clone());
+        match translate::translate(tc, &raw.content, target, ot).await {
+            Ok(r) => {
+                let translated = r.text != raw.content;
+                monitor.write().await.update_log(feed_name, &lid, |l| {
+                    if translated {
+                        l.status = LogStatus::Completed;
+                        l.prompt_tokens = Some(r.usage.prompt_tokens);
+                        l.completion_tokens = Some(r.usage.completion_tokens);
+                    } else {
+                        l.status = LogStatus::Failed("model returned untranslated text".into());
+                    }
+                });
+                if translated {
+                    total_translation_tokens += r.usage.prompt_tokens + r.usage.completion_tokens;
+                    monitor.write().await.add_token_usage(
+                        feed_name,
+                        &model,
+                        r.usage.prompt_tokens,
+                        r.usage.completion_tokens,
+                    );
+                }
+                (
+                    if translated {
+                        r.text
+                    } else {
+                        raw.content.clone()
+                    },
+                    translated,
+                )
+            }
+            Err(e) => {
+                monitor.write().await.update_log(feed_name, &lid, |l| {
+                    l.status = LogStatus::Failed(e.to_string());
+                });
+                (raw.content.clone(), false)
+            }
+        }
+    } else {
+        (raw.content.clone(), false)
+    };
+
+    // ---- Summarization ----
+    let summary = {
+        let _permit = semaphore.acquire().await.unwrap();
+        let log = mlog(&final_title, TranslationStage::Summarizing, &sum_model);
+        let lid = log.id.clone();
+        monitor.write().await.add_log(feed_name, log);
+        let ot = mtok(monitor.clone(), feed_name.to_string(), lid.clone());
+        match summarize::summarize(sc, &final_title, &final_content, ot).await {
+            Ok(r) => {
+                monitor.write().await.update_log(feed_name, &lid, |l| {
+                    l.status = LogStatus::Completed;
+                    l.prompt_tokens = Some(r.usage.prompt_tokens);
+                    l.completion_tokens = Some(r.usage.completion_tokens);
+                });
+                monitor.write().await.add_token_usage(
+                    feed_name,
+                    &sum_model,
+                    r.usage.prompt_tokens,
+                    r.usage.completion_tokens,
+                );
+                Some(r.text)
+            }
+            Err(e) => {
+                monitor.write().await.update_log(feed_name, &lid, |l| {
+                    l.status = LogStatus::Failed(e.to_string());
+                });
+                None
+            }
+        }
+    };
+
+    let enclosure = raw.media_urls.first().map(|m| Enclosure {
+        url: m.url.clone(),
+        content_type: m.content_type.clone(),
+        length: m.length,
+    });
+
+    let translation_tokens = if total_translation_tokens > 0 {
+        Some(total_translation_tokens)
+    } else {
+        None
+    };
+
+    Ok(Article {
+        id: raw
+            .guid
+            .clone()
+            .unwrap_or_else(|| Uuid::new_v4().to_string()),
+        feed_name: feed_name.to_string(),
+        title: final_title,
+        original_title: raw.title,
+        link: raw.link,
+        content: final_content,
+        original_content: raw.content,
+        summary,
+        translated: ct,
+        translated_title: tt,
+        source_lang,
+        published_at: raw.published_at.clone(),
+        published_at_rfc2822: chrono::DateTime::parse_from_rfc2822(&raw.published_at)
+            .ok()
+            .map(|dt| dt.to_rfc2822()),
+        processed_at: chrono::Utc::now().to_rfc3339(),
+        author: raw.author,
+        categories: raw.categories,
+        translation_model: if ct || tt { Some(model.clone()) } else { None },
+        translation_tokens,
+        enclosure,
+    })
 }
