@@ -108,3 +108,9 @@ cargo build --release
 - **Templates**: `include_str!()` at compile time + `tera.add_raw_template()` in `tera_instance()`
 - **Target locale**: `zh_CN` POSIX format (not ISO 639-3 `zho`), passed directly to LLM in translate prompt
 - **Lang detection**: `normalize_code()` splits on `-` and `_`, maps 11 codes (zh/en/ja/ko/fr/de/es/ru/ar/pt/it) to ISO 639-3
+
+## Release & Versioning
+
+- Default version bump: `0.0.1` unless user specifies otherwise
+- After `cargo publish`: commit Cargo.lock immediately — publish updates it and leaves working tree dirty
+- Release CI triggers on `v*` tag push, builds 4 targets, uploads to GitHub Releases
