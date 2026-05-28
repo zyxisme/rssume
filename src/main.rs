@@ -36,8 +36,9 @@ async fn main() {
     tracing::info!("Data directory: {}", data_dir.display());
 
     let config = Arc::new(RwLock::new(config));
+    let monitor = Arc::new(RwLock::new(monitor::Monitor::new()));
 
-    let scheduler = Arc::new(scheduler::Scheduler::new(config.clone()));
+    let scheduler = Arc::new(scheduler::Scheduler::new(config.clone(), monitor.clone()));
     let scheduler_clone = scheduler.clone();
     tokio::spawn(async move {
         scheduler_clone.run_loop().await;
