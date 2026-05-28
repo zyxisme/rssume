@@ -2,12 +2,12 @@
     {% for feed in feeds %}
     <div class="card">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <span class="status-dot" style="color: {% if feed.status == 'Fetching' or feed.status starts_with 'Translating' %}#0070f3{% elif feed.status == 'Done' %}#50e3c2{% elif feed.status == 'Error' %}#ee0000{% else %}#888888{% endif %};">●</span>
+            <span class="status-dot" style="color: {% if feed.status == 'Fetching' or feed.status is starting_with('Translating') %}#0070f3{% elif feed.status == 'Done' %}#50e3c2{% elif feed.status == 'Error' %}#ee0000{% else %}#888888{% endif %};">●</span>
             <strong>{{ feed.name }}</strong>
         </div>
         <div style="font-size:13px;color:var(--mute);">
             {{ feed.articles }} articles &middot;
-            {% if feed.status starts_with 'Translating' %}
+            {% if feed.status is starting_with('Translating') %}
                 Translating {{ feed.translating_current }}/{{ feed.translating_total }}: {{ feed.translating_title | truncate(length=40) }}
             {% elif feed.status == 'Fetching' %}
                 Fetching...

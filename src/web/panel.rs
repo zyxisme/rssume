@@ -46,16 +46,39 @@ async fn dashboard(
     let cfg = s.config.read().await;
     let mon = s.monitor.read().await;
     let tera = tera_instance()?;
+    let feed_rows: Vec<serde_json::Value> = cfg
+        .feeds
+        .iter()
+        .map(|f| {
+            let rt = mon.feeds.get(&f.name);
+            let s = stats.iter().find(|s| s.feed_name == f.name);
+            serde_json::json!({
+                "name": f.name,
+                "url": f.url,
+                "enabled": f.enabled,
+                "status": format!("{:?}", rt.map(|r| &r.status).unwrap_or(&crate::monitor::FeedStatus::Idle)),
+                "last_fetch_at": rt.and_then(|r| r.last_fetch_at.as_ref()),
+                "article_count": s.map(|x| x.article_count).unwrap_or(0),
+                "translated_count": s.map(|x| x.translated_count).unwrap_or(0),
+                "with_summary_count": s.map(|x| x.with_summary_count).unwrap_or(0),
+            })
+        })
+        .collect();
+    let total_articles: usize = stats.iter().map(|x| x.article_count).sum();
+    let total_translated: usize = stats.iter().map(|x| x.translated_count).sum();
+    let total_with_summary: usize = stats.iter().map(|x| x.with_summary_count).sum();
     let mut ctx = Context::new();
     ctx.insert("title", "rssume Dashboard");
-    ctx.insert("feeds", &cfg.feeds);
-    ctx.insert("feed_statuses", &mon.feeds);
-    ctx.insert("stats", &stats);
+    ctx.insert("feeds_count", &cfg.feeds.len());
+    ctx.insert("total_articles", &total_articles);
+    ctx.insert("total_translated", &total_translated);
+    ctx.insert("total_with_summary", &total_with_summary);
     ctx.insert("total_prompt_tokens", &mon.token_usage.total_prompt_tokens);
     ctx.insert(
         "total_completion_tokens",
         &mon.token_usage.total_completion_tokens,
     );
+    ctx.insert("feed_rows", &feed_rows);
     Ok(Html(tera.render("dashboard.html", &ctx).map_err(|e| {
         crate::error::AppError::Storage(format!("render: {}", e))
     })?))
