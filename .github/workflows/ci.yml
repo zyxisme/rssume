@@ -34,13 +34,26 @@ jobs:
     needs: [fmt, clippy]
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+        target:
+          - os: ubuntu-latest
+            profile: release
+          - os: macos-latest
+            profile: release
+          - os: windows-latest
+            profile: debug
+    runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --release
+      - name: cargo test
+        run: |
+          if [ "${{ matrix.target.profile }}" = "release" ]; then
+            cargo test --release
+          else
+            cargo test
+          fi
+        shell: bash
 
   build:
     needs: [fmt, clippy]
@@ -49,12 +62,20 @@ jobs:
         target:
           - os: ubuntu-latest
             triple: x86_64-unknown-linux-gnu
+            profile: release
+            ext: ""
           - os: macos-latest
             triple: x86_64-apple-darwin
+            profile: release
+            ext: ""
           - os: macos-latest
             triple: aarch64-apple-darwin
+            profile: release
+            ext: ""
           - os: windows-latest
             triple: x86_64-pc-windows-msvc
+            profile: debug
+            ext: ".exe"
     runs-on: ${{ matrix.target.os }}
     steps:
       - uses: actions/checkout@v5
@@ -62,4 +83,18 @@ jobs:
         with:
           targets: ${{ matrix.target.triple }}
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --release --target ${{ matrix.target.triple }}
+
+      - name: cargo build
+        run: |
+          if [ "${{ matrix.target.profile }}" = "release" ]; then
+            cargo build --release --target ${{ matrix.target.triple }}
+          else
+            cargo build --target ${{ matrix.target.triple }}
+          fi
+        shell: bash
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v5
+        with:
+          name: rssume-${{ matrix.target.triple }}
+          path: target/${{ matrix.target.triple }}/${{ matrix.target.profile }}/rssume${{ matrix.target.ext }}
