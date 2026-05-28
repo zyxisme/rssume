@@ -72,22 +72,24 @@ Design system: Vercel-inspired (see DESIGN.md)
 ## Build & Run
 
 ```bash
+# Just run — config auto-created on first run, templates embedded at compile time
 cargo build --release
-# Binary at target/release/rssume
-
-# Create default config
-mkdir -p ~/.config/rssume
-cp config.toml ~/.config/rssume/
-
-# Run
 ./target/release/rssume
 # Web panel at http://localhost:3000/panel
 # RSS feeds at http://localhost:3000/feeds/:name
 ```
 
-## Cross-Platform CI
+## CI
 
-GitHub Actions builds for `x86_64-unknown-linux-gnu`, `x86_64-apple-darwin`, `aarch64-apple-darwin`, `x86_64-pc-windows-msvc`.
+- Push/PR CI (`.github/workflows/ci.yml`): fmt → clippy → test(3os) + build(4 targets), Windows uses debug profile for speed
+- Release CI (`.github/workflows/release.yml`): triggered by `v*` tags, builds 4 targets, publishes via `softprops/action-gh-release`
+- All build targets upload single-binary artifacts via `upload-artifact@v5`
+
+## Deployment Model
+
+- Single binary, zero external dependencies at runtime
+- Templates embedded via `include_str!()` + `tera.add_raw_template()` at compile time
+- Config auto-created on first run if missing (`~/.config/rssume/config.toml`)
 
 ## Code Conventions
 
