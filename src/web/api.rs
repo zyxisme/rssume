@@ -129,17 +129,17 @@ async fn monitor_translating(
                 "status": rt.map(|r| format!("{:?}", r.status)).unwrap_or_else(|| "Idle".into()),
                 "articles": d.as_ref().map(|d| d.article_count()).unwrap_or(0),
                 "last_fetch_at": rt.and_then(|r| r.last_fetch_at.as_ref()),
-                "translating_current": match rt.map(|r| &r.status) {
-                    Some(crate::monitor::FeedStatus::Translating { current, .. }) => current,
+                "translating_completed": match rt.map(|r| &r.status) {
+                    Some(crate::monitor::FeedStatus::Translating { completed, .. }) => completed,
                     _ => &0u32,
                 },
                 "translating_total": match rt.map(|r| &r.status) {
                     Some(crate::monitor::FeedStatus::Translating { total, .. }) => total,
                     _ => &0u32,
                 },
-                "translating_title": match rt.map(|r| &r.status) {
-                    Some(crate::monitor::FeedStatus::Translating { current_title, .. }) => current_title,
-                    _ => "",
+                "translating_in_progress": match rt.map(|r| &r.status) {
+                    Some(crate::monitor::FeedStatus::Translating { in_progress, .. }) => in_progress.clone(),
+                    _ => vec![],
                 },
             })
         })
@@ -213,17 +213,17 @@ async fn monitor_feed_translating(
         "translated": d.as_ref().map(|d| d.translated_count()).unwrap_or(0),
         "last_fetch_at": rt.and_then(|r| r.last_fetch_at.as_ref()),
         "last_fetch_error": rt.and_then(|r| r.last_fetch_error.as_ref()),
-        "translating_current": match rt.map(|r| &r.status) {
-            Some(crate::monitor::FeedStatus::Translating { current, .. }) => current,
+        "translating_completed": match rt.map(|r| &r.status) {
+            Some(crate::monitor::FeedStatus::Translating { completed, .. }) => completed,
             _ => &0u32,
         },
         "translating_total": match rt.map(|r| &r.status) {
             Some(crate::monitor::FeedStatus::Translating { total, .. }) => total,
             _ => &0u32,
         },
-        "translating_title": match rt.map(|r| &r.status) {
-            Some(crate::monitor::FeedStatus::Translating { current_title, .. }) => current_title,
-            _ => "",
+        "translating_in_progress": match rt.map(|r| &r.status) {
+            Some(crate::monitor::FeedStatus::Translating { in_progress, .. }) => in_progress.clone(),
+            _ => vec![],
         },
     });
     let tera = super::panel::tera_instance()?;
