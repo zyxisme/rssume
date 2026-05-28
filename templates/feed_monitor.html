@@ -11,7 +11,7 @@
     <a href="/feeds/{{ feed_name }}" class="btn btn-primary" style="margin-left:8px;">RSS Feed</a>
 </div>
 
-<div hx-get="/api/monitor/feed/{{ feed_name }}/translating" hx-trigger="every 2s" hx-target="#feed-monitor-content" hx-swap="innerHTML" aria-hidden="true"></div>
+<div hx-get="/api/monitor/feed/{{ feed_name }}/translating" hx-trigger="every 500ms" hx-target="#feed-monitor-content" hx-swap="innerHTML" aria-hidden="true"></div>
 <div id="feed-monitor-content">
     {% include "partials/feed_monitor_status.html" %}
 </div>
