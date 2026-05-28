@@ -9,7 +9,8 @@ pub async fn summarize(
     content: &str,
 ) -> Result<String, crate::error::AppError> {
     let text = if content.len() > 4000 {
-        &content[..4000]
+        let end = content.floor_char_boundary(4000);
+        &content[..end]
     } else {
         content
     };
