@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}rssume - {{ feed_name }} Live{% endblock %}
+{% block content %}
+<h1>{{ feed_name }} &mdash; Live Monitor</h1>
+<p class="subtitle">Real-time translation progress for this feed</p>
+
+<div style="margin-bottom:16px;">
+    <a href="/panel" class="btn">← Dashboard</a>
+    <a href="/panel/feed/{{ feed_name }}" class="btn" style="margin-left:8px;">Feed Detail</a>
+    <a href="/panel/feed/{{ feed_name }}/logs" class="btn" style="margin-left:8px;">Translation Logs</a>
+    <a href="/feeds/{{ feed_name }}" class="btn btn-primary" style="margin-left:8px;">RSS Feed</a>
+</div>
+
+<div hx-get="/api/monitor/feed/{{ feed_name }}/translating" hx-trigger="every 2s">
+    {% include "partials/feed_monitor_status.html" %}
+</div>
+{% endblock %}

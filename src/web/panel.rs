@@ -1,4 +1,5 @@
 use super::api::AppState;
+use crate::monitor::LogStatus;
 use axum::response::Html;
 use axum::{Extension, Router, routing::get};
 use std::sync::Arc;
@@ -11,6 +12,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/panel/settings", get(settings))
         .route("/panel/monitor", get(monitor_page))
         .route("/panel/feed/{name}/logs", get(feed_logs_page))
+        .route("/panel/feed/{name}/monitor", get(feed_monitor_page))
         .layer(Extension(state))
 }
 
@@ -29,12 +31,20 @@ pub(super) fn tera_instance() -> Result<Tera, crate::error::AppError> {
     tera.add_raw_template("monitor.html", include_str!("../../templates/monitor.html"))?;
     tera.add_raw_template("logs.html", include_str!("../../templates/logs.html"))?;
     tera.add_raw_template(
+        "feed_monitor.html",
+        include_str!("../../templates/feed_monitor.html"),
+    )?;
+    tera.add_raw_template(
         "partials/stats_bar.html",
         include_str!("../../templates/partials/stats_bar.html"),
     )?;
     tera.add_raw_template(
         "partials/monitor_status.html",
         include_str!("../../templates/partials/monitor_status.html"),
+    )?;
+    tera.add_raw_template(
+        "partials/feed_monitor_status.html",
+        include_str!("../../templates/partials/feed_monitor_status.html"),
     )?;
     Ok(tera)
 }
@@ -185,6 +195,75 @@ async fn feed_logs_page(
     Ok(Html(tera.render("logs.html", &ctx).map_err(|e| {
         crate::error::AppError::Storage(format!("render: {}", e))
     })?))
+}
+
+async fn feed_monitor_page(
+    Extension(s): Extension<Arc<AppState>>,
+    axum::extract::Path(name): axum::extract::Path<String>,
+) -> Result<Html<String>, crate::error::AppError> {
+    let mon = s.monitor.read().await;
+    let rt = mon.feeds.get(&name);
+    let d = crate::storage::FeedData::load(&name).ok();
+    let active: Vec<serde_json::Value> = mon
+        .translation_logs
+        .get(&name)
+        .map(|logs| {
+            logs.iter()
+                .rev()
+                .filter(|l| matches!(l.status, LogStatus::Started | LogStatus::Streaming { .. }))
+                .map(|l| {
+                    serde_json::json!({
+                        "article_title": l.article_title,
+                        "stage": format!("{:?}", l.stage),
+                        "model": l.model,
+                        "streamed_text": match &l.status {
+                            LogStatus::Streaming { tokens } => tokens.clone(),
+                            _ => String::new(),
+                        },
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let recent_count: usize = mon
+        .translation_logs
+        .get(&name)
+        .map(|logs| {
+            logs.iter()
+                .filter(|l| matches!(l.status, LogStatus::Completed | LogStatus::Failed(_)))
+                .count()
+        })
+        .unwrap_or(0);
+    let feed = serde_json::json!({
+        "name": name,
+        "status": rt.map(|r| format!("{:?}", r.status)).unwrap_or_else(|| "Idle".into()),
+        "articles": d.as_ref().map(|d| d.article_count()).unwrap_or(0),
+        "translated": d.as_ref().map(|d| d.translated_count()).unwrap_or(0),
+        "last_fetch_at": rt.and_then(|r| r.last_fetch_at.as_ref()),
+        "last_fetch_error": rt.and_then(|r| r.last_fetch_error.as_ref()),
+        "translating_current": match rt.map(|r| &r.status) {
+            Some(crate::monitor::FeedStatus::Translating { current, .. }) => current,
+            _ => &0u32,
+        },
+        "translating_total": match rt.map(|r| &r.status) {
+            Some(crate::monitor::FeedStatus::Translating { total, .. }) => total,
+            _ => &0u32,
+        },
+        "translating_title": match rt.map(|r| &r.status) {
+            Some(crate::monitor::FeedStatus::Translating { current_title, .. }) => current_title,
+            _ => "",
+        },
+    });
+    let tera = tera_instance()?;
+    let mut ctx = Context::new();
+    ctx.insert("title", &format!("rssume - {}", name));
+    ctx.insert("feed_name", &name);
+    ctx.insert("feed", &feed);
+    ctx.insert("active", &active);
+    ctx.insert("recent_count", &recent_count);
+    Ok(Html(tera.render("feed_monitor.html", &ctx).map_err(
+        |e| crate::error::AppError::Storage(format!("render: {}", e)),
+    )?))
 }
 
 async fn settings() -> Result<Html<String>, crate::error::AppError> {

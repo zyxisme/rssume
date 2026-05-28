@@ -6,7 +6,8 @@
 
 <div style="margin-bottom: 16px;">
     <a href="/panel" class="btn">← Back</a>
-    <a href="/feeds/{{ feed_name }}" class="btn btn-primary" style="margin-left: 8px;">RSS Feed</a>
+    <a href="/panel/feed/{{ feed_name }}/monitor" class="btn" style="margin-left:8px;">Live Monitor</a>
+    <a href="/feeds/{{ feed_name }}" class="btn btn-primary" style="margin-left:8px;">RSS Feed</a>
 </div>
 
 {% for article in articles %}

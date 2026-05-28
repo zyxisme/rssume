@@ -4,7 +4,9 @@
 <h1>Dashboard</h1>
 <p class="subtitle">Monitor your RSS feeds and AI processing status</p>
 
-{% include "partials/stats_bar.html" %}
+<div hx-get="/api/stats" hx-trigger="every 5s">
+    {% include "partials/stats_bar.html" %}
+</div>
 
 <h2>Feeds</h2>
 <table>

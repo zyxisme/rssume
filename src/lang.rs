@@ -33,25 +33,6 @@ fn normalize_code(code: &str) -> &str {
     }
 }
 
-pub fn lang_name(code: &str) -> String {
-    let code = code.split(['-', '_']).next().unwrap_or(code);
-    match code {
-        "zho" | "zh" | "cmn" => "Chinese",
-        "eng" | "en" => "English",
-        "jpn" | "ja" => "Japanese",
-        "kor" | "ko" => "Korean",
-        "fra" | "fr" => "French",
-        "deu" | "de" => "German",
-        "spa" | "es" => "Spanish",
-        "rus" | "ru" => "Russian",
-        "ara" | "ar" => "Arabic",
-        "por" | "pt" => "Portuguese",
-        "ita" | "it" => "Italian",
-        _ => code,
-    }
-    .to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

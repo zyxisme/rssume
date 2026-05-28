@@ -4,7 +4,7 @@
 <h1>Live Monitor</h1>
 <p class="subtitle">Real-time translation progress and feed status</p>
 
-<div hx-get="/api/monitor/translating" hx-trigger="every 2s" hx-swap="outerHTML">
+<div hx-get="/api/monitor/translating" hx-trigger="every 2s">
     {% include "partials/monitor_status.html" %}
 </div>
 {% endblock %}

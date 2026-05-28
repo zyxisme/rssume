@@ -55,13 +55,15 @@ pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
         }
         xml.push_str(&article.content);
         if article.translated {
+            let model = article.translation_model.as_deref().unwrap_or("unknown");
+            let tokens = article
+                .translation_tokens
+                .map(|t| t.to_string())
+                .unwrap_or_else(|| "?".to_string());
             xml.push_str(&format!(
-                "<p><em>(Translated from {})</em></p>",
-                article
-                    .source_lang
-                    .as_ref()
-                    .map(|l| crate::lang::lang_name(l))
-                    .unwrap_or_else(|| "unknown".to_string())
+                "<p><em>由 {} 模型翻译，花费 {} tokens</em></p>",
+                esc(model),
+                tokens
             ));
         }
         xml.push_str("]]></content:encoded>\n");

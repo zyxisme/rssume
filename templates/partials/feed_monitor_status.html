@@ -1,0 +1,48 @@
+<div class="card" style="margin-bottom:16px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span class="status-dot" style="color: {% if feed.status == 'Fetching' or feed.status is starting_with('Translating') %}#0070f3{% elif feed.status == 'Done' %}#50e3c2{% elif feed.status == 'Error' %}#ee0000{% else %}#888888{% endif %};">●</span>
+        <strong>{{ feed.name }}</strong>
+    </div>
+    <div style="font-size:13px;color:var(--mute);display:flex;gap:16px;flex-wrap:wrap;">
+        <span>{{ feed.articles }} articles</span>
+        <span>{{ feed.translated }} translated</span>
+        {% if feed.status is starting_with('Translating') %}
+        <span>Translating {{ feed.translating_current }}/{{ feed.translating_total }}: {{ feed.translating_title | truncate(length=40) }}</span>
+        {% elif feed.status == 'Fetching' %}
+        <span>Fetching...</span>
+        {% elif feed.last_fetch_at %}
+        <span>Last fetch: {{ feed.last_fetch_at | truncate(length=19) }}</span>
+        {% endif %}
+        {% if feed.last_fetch_error %}
+        <span style="color:var(--error);">{{ feed.last_fetch_error }}</span>
+        {% endif %}
+    </div>
+</div>
+
+<h2>Active Translations</h2>
+{% if active | length > 0 %}
+<div id="active-translations">
+    {% for t in active %}
+    <div class="card" style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span><strong>{{ t.article_title | truncate(length=50) }}</strong></span>
+            <span class="badge badge-success">{{ t.stage }}</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+            <span class="badge">{{ t.model }}</span>
+        </div>
+        {% if t.streamed_text %}
+        <div style="margin-top:8px;font-size:13px;color:var(--mute);max-height:120px;overflow-y:auto;white-space:pre-wrap;">{{ t.streamed_text }}</div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div id="active-translations">
+    <p style="color:var(--mute);">No active translations</p>
+</div>
+{% endif %}
+
+<div style="margin-top:16px;font-size:13px;color:var(--mute);">
+    {{ recent_count }} translations completed in this session
+</div>

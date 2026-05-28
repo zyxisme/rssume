@@ -22,6 +22,10 @@ pub struct Article {
     #[serde(default)]
     pub translated_title: bool,
     #[serde(default)]
+    pub translation_model: Option<String>,
+    #[serde(default)]
+    pub translation_tokens: Option<u32>,
+    #[serde(default)]
     pub enclosure: Option<Enclosure>,
     #[serde(skip)]
     pub published_at_rfc2822: Option<String>,

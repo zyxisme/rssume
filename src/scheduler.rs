@@ -88,6 +88,7 @@ impl Scheduler {
             let needs_tt = crate::lang::needs_translation(&raw.title, &target);
             let model = tc.model.clone();
             let sum_model = sc.model.clone();
+            let mut total_translation_tokens: u32 = 0;
 
             // ---- Title Translation ----
             let (final_title, tt) = if needs_tt {
@@ -102,6 +103,8 @@ impl Scheduler {
                             l.prompt_tokens = Some(r.usage.prompt_tokens);
                             l.completion_tokens = Some(r.usage.completion_tokens);
                         });
+                        total_translation_tokens +=
+                            r.usage.prompt_tokens + r.usage.completion_tokens;
                         self.monitor.write().await.add_token_usage(
                             feed_name,
                             &model,
@@ -134,6 +137,8 @@ impl Scheduler {
                             l.prompt_tokens = Some(r.usage.prompt_tokens);
                             l.completion_tokens = Some(r.usage.completion_tokens);
                         });
+                        total_translation_tokens +=
+                            r.usage.prompt_tokens + r.usage.completion_tokens;
                         self.monitor.write().await.add_token_usage(
                             feed_name,
                             &model,
@@ -189,6 +194,11 @@ impl Scheduler {
                 length: m.length,
             });
 
+            let translation_tokens = if total_translation_tokens > 0 {
+                Some(total_translation_tokens)
+            } else {
+                None
+            };
             let article = Article {
                 id: raw
                     .guid
@@ -211,6 +221,8 @@ impl Scheduler {
                 processed_at: chrono::Utc::now().to_rfc3339(),
                 author: raw.author,
                 categories: raw.categories,
+                translation_model: if ct || tt { Some(model.clone()) } else { None },
+                translation_tokens,
                 enclosure,
             };
             feed_data.articles.push(article);
