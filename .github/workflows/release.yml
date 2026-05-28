@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        target:
+          - os: ubuntu-latest
+            triple: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            triple: x86_64-apple-darwin
+          - os: macos-latest
+            triple: aarch64-apple-darwin
+          - os: windows-latest
+            triple: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.target.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target.triple }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target.triple }}
+
+      - name: Package (unix)
+        if: matrix.target.os != 'windows-latest'
+        run: |
+          cd target/${{ matrix.target.triple }}/release
+          tar czf ../../../rssume-${{ matrix.target.triple }}.tar.gz rssume
+
+      - name: Package (windows)
+        if: matrix.target.os == 'windows-latest'
+        run: |
+          cd target/${{ matrix.target.triple }}/release
+          7z a ../../../rssume-${{ matrix.target.triple }}.zip rssume.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: rssume-${{ matrix.target.triple }}
+          path: rssume-${{ matrix.target.triple }}.*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          path: artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: rssume ${{ github.ref_name }}
+          files: artifacts/**/*
+          generate_release_notes: true
