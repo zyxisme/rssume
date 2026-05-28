@@ -5,7 +5,7 @@ use tera::{Context, Tera};
 pub fn router() -> Router {
     Router::new()
         .route("/panel", get(dashboard))
-        .route("/panel/feed/:name", get(feed_detail))
+        .route("/panel/feed/{name}", get(feed_detail))
         .route("/panel/settings", get(settings))
 }
 

@@ -4,7 +4,7 @@ use tokio::sync::RwLock;
 
 pub fn router(config: Arc<RwLock<crate::config::Config>>) -> Router {
     Router::new()
-        .route("/feeds/:name", get(serve_feed))
+        .route("/feeds/{name}", get(serve_feed))
         .with_state(config)
 }
 
