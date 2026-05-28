@@ -5,6 +5,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-2024_edition-%23dea584?style=for-the-badge)](https://www.rust-lang.org)
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen?style=for-the-badge)](https://github.com/zyxisme/rssume/actions/workflows/ci.yml)
+[![Crates.io](https://img.shields.io/crates/v/rssume.svg?style=for-the-badge)](https://crates.io/crates/rssume)
 
 **AI 驱动的 RSS 翻译与摘要中间件。**
 
