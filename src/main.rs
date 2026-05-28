@@ -44,7 +44,7 @@ async fn main() {
         scheduler_clone.run_loop().await;
     });
 
-    let app = web::router(config.clone());
+    let app = web::router(config.clone(), monitor.clone());
 
     let host = config.read().await.server.host.clone();
     let port = config.read().await.server.port;

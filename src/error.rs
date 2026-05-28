@@ -31,6 +31,12 @@ impl From<toml::ser::Error> for AppError {
     }
 }
 
+impl From<tera::Error> for AppError {
+    fn from(e: tera::Error) -> Self {
+        AppError::Storage(format!("template: {}", e))
+    }
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, msg) = match &self {

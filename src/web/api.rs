@@ -1,13 +1,12 @@
-use axum::{Json, Router, extract::State, routing::get};
+use axum::{Extension, Json, Router, routing::get};
 use serde::Serialize;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use crate::monitor::{Monitor, LogStatus};
 
 #[derive(Clone)]
 pub struct AppState {
-    pub config: Arc<RwLock<crate::config::Config>>,
-    pub monitor: Arc<RwLock<Monitor>>,
+    pub config: Arc<tokio::sync::RwLock<crate::config::Config>>,
+    pub monitor: Arc<tokio::sync::RwLock<Monitor>>,
 }
 
 pub fn router(state: Arc<AppState>) -> Router {
@@ -18,7 +17,7 @@ pub fn router(state: Arc<AppState>) -> Router {
         .route("/api/monitor/translating", get(monitor_translating))
         .route("/api/monitor/logs/{name}", get(monitor_logs))
         .route("/api/token-usage", get(token_usage))
-        .with_state(state)
+        .layer(Extension(state))
 }
 
 #[derive(Serialize)]
@@ -31,7 +30,7 @@ struct ApiStats {
     total_completion_tokens: u64,
 }
 
-async fn get_stats(State(s): State<Arc<AppState>>) -> Result<Json<ApiStats>, crate::error::AppError> {
+async fn get_stats(Extension(s): Extension<Arc<AppState>>) -> Result<Json<ApiStats>, crate::error::AppError> {
     let stats = crate::storage::all_feed_stats()?;
     let tu = &s.monitor.read().await.token_usage;
     Ok(Json(ApiStats {
@@ -52,7 +51,7 @@ struct FeedInfo {
     interval_secs: u64,
 }
 
-async fn list_feeds(State(s): State<Arc<AppState>>) -> Json<Vec<FeedInfo>> {
+async fn list_feeds(Extension(s): Extension<Arc<AppState>>) -> Json<Vec<FeedInfo>> {
     let c = s.config.read().await;
     Json(c.feeds.iter().map(|f| FeedInfo {
         name: f.name.clone(),
@@ -62,7 +61,7 @@ async fn list_feeds(State(s): State<Arc<AppState>>) -> Json<Vec<FeedInfo>> {
     }).collect())
 }
 
-async fn monitor_status(State(s): State<Arc<AppState>>) -> Json<Vec<serde_json::Value>> {
+async fn monitor_status(Extension(s): Extension<Arc<AppState>>) -> Json<Vec<serde_json::Value>> {
     let mon = s.monitor.read().await;
     let cfg = s.config.read().await;
     Json(cfg.feeds.iter().map(|f| {
@@ -83,7 +82,7 @@ async fn monitor_status(State(s): State<Arc<AppState>>) -> Json<Vec<serde_json::
     }).collect())
 }
 
-async fn monitor_translating(State(s): State<Arc<AppState>>) -> Json<serde_json::Value> {
+async fn monitor_translating(Extension(s): Extension<Arc<AppState>>) -> Json<serde_json::Value> {
     let mon = s.monitor.read().await;
     let cfg = s.config.read().await;
     let feeds_status: Vec<_> = cfg.feeds.iter().filter_map(|f| {
@@ -104,12 +103,12 @@ async fn monitor_translating(State(s): State<Arc<AppState>>) -> Json<serde_json:
 }
 
 async fn monitor_logs(
-    State(s): State<Arc<AppState>>,
+    Extension(s): Extension<Arc<AppState>>,
     axum::extract::Path(name): axum::extract::Path<String>,
 ) -> Json<Vec<crate::monitor::TranslationLog>> {
     Json(s.monitor.read().await.get_logs(&name).into_iter().cloned().collect())
 }
 
-async fn token_usage(State(s): State<Arc<AppState>>) -> Json<crate::monitor::TokenUsage> {
+async fn token_usage(Extension(s): Extension<Arc<AppState>>) -> Json<crate::monitor::TokenUsage> {
     Json(s.monitor.read().await.token_usage.clone())
 }

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Monitor</h2>
+<p>Feed monitoring dashboard. Real content coming in Task 10.</p>
+<ul>
+{% for feed in feeds %}
+  <li>{{ feed.name }} — {{ feed.url }}</li>
+{% endfor %}
+</ul>
+{% endblock %}

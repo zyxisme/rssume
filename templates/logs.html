@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ feed_name }} Logs</h2>
+<p>Translation logs for this feed. Real content coming in Task 10.</p>
+<ul>
+{% for log in logs %}
+  <li>{{ log.article_title }} — {{ log.status }}</li>
+{% endfor %}
+</ul>
+{% endblock %}

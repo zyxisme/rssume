@@ -1,18 +1,18 @@
-use axum::{Router, extract::State, routing::get};
+use axum::{Extension, Router, routing::get};
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use super::api::AppState;
 
-pub fn router(config: Arc<RwLock<crate::config::Config>>) -> Router {
+pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/feeds/{name}", get(serve_feed))
-        .with_state(config)
+        .layer(Extension(state))
 }
 
 async fn serve_feed(
     axum::extract::Path(name): axum::extract::Path<String>,
-    State(config): State<Arc<RwLock<crate::config::Config>>>,
+    Extension(state): Extension<Arc<AppState>>,
 ) -> Result<(axum::http::StatusCode, [(String, String); 1], String), crate::error::AppError> {
-    let config = config.read().await;
+    let config = state.config.read().await;
     let feed_cfg = config
         .feeds
         .iter()
