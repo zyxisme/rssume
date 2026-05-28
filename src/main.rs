@@ -2,6 +2,7 @@ mod config;
 mod error;
 mod lang;
 mod llm;
+mod monitor;
 mod rss;
 mod scheduler;
 mod storage;
