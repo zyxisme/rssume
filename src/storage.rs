@@ -75,10 +75,6 @@ impl FeedMeta {
         self.article_ids.push(article_id.to_string());
         self.last_updated = Some(chrono::Utc::now().to_rfc3339());
     }
-
-    pub fn contains_article(&self, article_id: &str) -> bool {
-        self.article_ids.contains(&article_id.to_string())
-    }
 }
 
 impl Article {
@@ -148,15 +144,6 @@ impl FeedData {
                 .map(|dt| dt.to_rfc2822());
         }
         Ok(data)
-    }
-
-    pub fn save(&self, feed_name: &str) -> Result<(), crate::error::AppError> {
-        let dir = super::config::Config::data_dir();
-        std::fs::create_dir_all(&dir)?;
-        let c = toml::to_string_pretty(self)
-            .map_err(|e| crate::error::AppError::Storage(format!("serialize: {}", e)))?;
-        std::fs::write(data_path(feed_name), c)?;
-        Ok(())
     }
 
     pub fn contains_link(&self, link: &str) -> bool {
