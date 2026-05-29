@@ -118,7 +118,12 @@ impl FeedData {
             for id in &meta.article_ids {
                 match Article::load_from_file(feed_name, id) {
                     Ok(article) => articles.push(article),
-                    Err(e) => tracing::warn!("Failed to load article {} for feed {}: {}", id, feed_name, e),
+                    Err(e) => tracing::warn!(
+                        "Failed to load article {} for feed {}: {}",
+                        id,
+                        feed_name,
+                        e
+                    ),
                 }
             }
             for a in &mut articles {

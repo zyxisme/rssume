@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::llm::{summarize, translate};
 use crate::monitor::{FeedStatus, LogStatus, Monitor, TranslationLog, TranslationStage};
 use crate::rss::fetch;
-use crate::storage::{Article, Enclosure, FeedData};
+use crate::storage::{Article, Enclosure, FeedData, FeedMeta};
 use std::sync::Arc;
 use tokio::sync::{RwLock, Semaphore};
 use uuid::Uuid;
@@ -65,7 +65,7 @@ impl Scheduler {
             None,
         );
 
-        let mut feed_data = match FeedData::load(feed_name) {
+        let feed_data = match FeedData::load(feed_name) {
             Ok(d) => d,
             Err(e) => {
                 tracing::error!("Load failed: {}", e);
@@ -86,6 +86,14 @@ impl Scheduler {
                 .set_status(feed_name, FeedStatus::Done);
             return;
         }
+
+        let mut feed_meta = match FeedMeta::load(feed_name) {
+            Ok(m) => m,
+            Err(e) => {
+                tracing::error!("Load meta failed '{}': {}", feed_name, e);
+                return;
+            }
+        };
 
         let total = new_articles.len() as u32;
 
@@ -135,7 +143,10 @@ impl Scheduler {
         for handle in handles {
             match handle.await {
                 Ok((feed_name, title, Ok(article))) => {
-                    feed_data.articles.push(article);
+                    if let Err(e) = article.save_to_file(&feed_name) {
+                        tracing::error!("Failed to save article '{}': {}", title, e);
+                    }
+                    feed_meta.add_article(&article.id, &article.published_at);
                     monitor.write().await.complete_article(&feed_name, &title);
                 }
                 Ok((feed_name, title, Err(e))) => {
@@ -148,18 +159,14 @@ impl Scheduler {
             }
         }
 
-        feed_data
-            .articles
-            .sort_by(|a, b| b.published_at.cmp(&a.published_at));
-
-        if let Err(e) = feed_data.save(feed_name) {
-            tracing::error!("Save failed '{}': {}", feed_name, e);
+        if let Err(e) = feed_meta.save(feed_name) {
+            tracing::error!("Failed to save feed meta '{}': {}", feed_name, e);
         }
 
         tracing::info!(
             "Feed '{}' processed: {} total",
             feed_name,
-            feed_data.article_count()
+            feed_meta.article_ids.len()
         );
         self.monitor
             .write()
