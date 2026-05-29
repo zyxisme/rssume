@@ -70,6 +70,7 @@ impl FeedMeta {
         Ok(())
     }
 
+    // TODO(Task 4): use `published_at` for sorting articles
     pub fn add_article(&mut self, article_id: &str, _published_at: &str) {
         self.article_ids.push(article_id.to_string());
         self.last_updated = Some(chrono::Utc::now().to_rfc3339());
@@ -82,13 +83,13 @@ impl FeedMeta {
 
 impl Article {
     pub fn save_to_file(&self, feed_name: &str) -> Result<(), crate::error::AppError> {
-        let dir = super::config::Config::data_dir()
-            .join(feed_name)
-            .join("articles");
-        std::fs::create_dir_all(&dir)?;
+        let path = article_path(feed_name, &self.id);
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir)?;
+        }
         let c = toml::to_string_pretty(self)
             .map_err(|e| crate::error::AppError::Storage(format!("serialize article: {}", e)))?;
-        std::fs::write(article_path(feed_name, &self.id), c)?;
+        std::fs::write(path, c)?;
         Ok(())
     }
 
@@ -115,9 +116,15 @@ impl FeedData {
             let meta = FeedMeta::load(feed_name)?;
             let mut articles = Vec::new();
             for id in &meta.article_ids {
-                if let Ok(article) = Article::load_from_file(feed_name, id) {
-                    articles.push(article);
+                match Article::load_from_file(feed_name, id) {
+                    Ok(article) => articles.push(article),
+                    Err(e) => tracing::warn!("Failed to load article {} for feed {}: {}", id, feed_name, e),
                 }
+            }
+            for a in &mut articles {
+                a.published_at_rfc2822 = chrono::DateTime::parse_from_rfc2822(&a.published_at)
+                    .ok()
+                    .map(|dt| dt.to_rfc2822());
             }
             return Ok(FeedData { articles });
         }
