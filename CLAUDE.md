@@ -64,6 +64,9 @@ Design system: Vercel-inspired (see DESIGN.md)
 - No JavaScript build step
 - **htmx polling**: decouple trigger from content — empty div with `hx-get`/`hx-trigger` targets a
   separate `div id="..."` via `hx-target`. Never put polling attributes on the swapped content.
+- **htmx auto-scroll**: use `hx-on:after-swap` on the trigger div. For streaming text, add
+  scroll-stickiness guard: `if (el.scrollHeight - el.scrollTop - el.clientHeight < 50)` before
+  setting `scrollTop = scrollHeight`, so users can scroll up without being yanked back.
 
 ## LLM Integration
 
@@ -112,6 +115,9 @@ cargo build --release
 - **Templates**: `include_str!()` at compile time + `tera.add_raw_template()` in `tera_instance()`
 - **Target locale**: `zh_CN` POSIX format (not ISO 639-3 `zho`), passed directly to LLM in translate prompt
 - **Lang detection**: `normalize_code()` splits on `-` and `_`, maps 11 codes (zh/en/ja/ko/fr/de/es/ru/ar/pt/it) to ISO 639-3
+- **Self-referential URLs**: when generating URLs that point back to rssume (e.g. OPML `xmlUrl`),
+  extract base URL from request headers: `X-Forwarded-Proto` + `X-Forwarded-Host` → `Host` header
+  → config fallback. Never hardcode upstream URLs where rssume's own URL is needed.
 
 ## Release & Versioning
 
