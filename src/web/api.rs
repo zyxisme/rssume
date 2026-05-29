@@ -1,5 +1,5 @@
 use crate::monitor::{LogStatus, Monitor};
-use axum::response::Html;
+use axum::response::{Html, IntoResponse};
 use axum::{Extension, Json, Router, routing::get};
 use serde::Serialize;
 use std::sync::Arc;
@@ -15,6 +15,7 @@ pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/api/stats", get(get_stats))
         .route("/api/feeds", get(list_feeds))
+        .route("/api/feeds/export.opml", get(export_opml))
         .route("/api/monitor/status", get(monitor_status))
         .route("/api/monitor/translating", get(monitor_translating))
         .route(
@@ -74,6 +75,22 @@ async fn list_feeds(Extension(s): Extension<Arc<AppState>>) -> Json<Vec<FeedInfo
                 interval_secs: f.interval_secs,
             })
             .collect(),
+    )
+}
+
+async fn export_opml(Extension(s): Extension<Arc<AppState>>) -> impl IntoResponse {
+    let cfg = s.config.read().await;
+    let opml = crate::opml::generate_opml(&cfg.feeds);
+
+    (
+        [
+            ("Content-Type", "application/xml; charset=utf-8"),
+            (
+                "Content-Disposition",
+                r#"attachment; filename="rssume-subscriptions.opml""#,
+            ),
+        ],
+        opml,
     )
 }
 
