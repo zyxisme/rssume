@@ -8,10 +8,7 @@
         <div style="font-size:13px;color:var(--mute);">
             {{ feed.articles }} articles &middot;
             {% if feed.status is starting_with('Translating') %}
-                Translating {{ feed.translating_completed }}/{{ feed.translating_total }} ({{ feed.translating_in_progress | length }} in progress)
-                {% for title in feed.translating_in_progress %}
-                <span class="badge">{{ title | truncate(length=30) }}</span>
-                {% endfor %}
+                Translating {{ feed.translating_completed }}/{{ feed.translating_total }}
             {% elif feed.status == 'Fetching' %}
                 Fetching...
             {% elif feed.last_fetch_at %}
@@ -34,7 +31,7 @@
             <span class="badge badge-success">{{ t.stage }}</span>
         </div>
         {% if t.streamed_text %}
-        <div style="margin-top:8px;font-size:13px;color:var(--mute);max-height:120px;overflow-y:auto;white-space:pre-wrap;">{{ t.streamed_text }}</div>
+        <div style="margin-top:8px;font-size:13px;color:var(--mute);max-height:80px;overflow:hidden;white-space:pre-wrap;">{{ t.streamed_text }}</div>
         {% endif %}
     </div>
     {% endfor %}
