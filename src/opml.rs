@@ -1,16 +1,23 @@
 use crate::config::FeedConfig;
 use crate::rss::generate::esc;
 
-pub fn generate_opml(feeds: &[FeedConfig]) -> String {
+pub fn generate_opml(feeds: &[FeedConfig], base_url: &str) -> String {
     let outlines: String = feeds
         .iter()
         .filter(|f| f.enabled)
         .map(|f| {
+            let feed_url = format!("{}/feeds/{}", base_url.trim_end_matches('/'), f.name);
+            let panel_url = format!(
+                "{}/panel/feed/{}/monitor",
+                base_url.trim_end_matches('/'),
+                f.name
+            );
             format!(
-                r#"      <outline type="rss" text="{}" title="{}" xmlUrl="{}"/>"#,
+                r#"      <outline type="rss" text="{}" title="{}" xmlUrl="{}" htmlUrl="{}"/>"#,
                 esc(&f.name),
                 esc(&f.name),
-                esc(&f.url)
+                esc(&feed_url),
+                esc(&panel_url)
             )
         })
         .collect::<Vec<_>>()

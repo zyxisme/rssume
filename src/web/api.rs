@@ -78,9 +78,30 @@ async fn list_feeds(Extension(s): Extension<Arc<AppState>>) -> Json<Vec<FeedInfo
     )
 }
 
-async fn export_opml(Extension(s): Extension<Arc<AppState>>) -> impl IntoResponse {
+fn base_url_from_headers(headers: &axum::http::HeaderMap, cfg: &crate::config::Config) -> String {
+    if let (Some(proto), Some(host)) = (
+        headers
+            .get("x-forwarded-proto")
+            .and_then(|v| v.to_str().ok()),
+        headers
+            .get("x-forwarded-host")
+            .and_then(|v| v.to_str().ok()),
+    ) {
+        return format!("{}://{}", proto, host);
+    }
+    if let Some(host) = headers.get("host").and_then(|v| v.to_str().ok()) {
+        return format!("http://{}", host);
+    }
+    format!("http://{}:{}", cfg.server.host, cfg.server.port)
+}
+
+async fn export_opml(
+    Extension(s): Extension<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+) -> impl IntoResponse {
     let cfg = s.config.read().await;
-    let opml = crate::opml::generate_opml(&cfg.feeds);
+    let base_url = base_url_from_headers(&headers, &cfg);
+    let opml = crate::opml::generate_opml(&cfg.feeds, &base_url);
 
     (
         [
