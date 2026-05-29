@@ -179,28 +179,29 @@ async fn monitor_page(
         .translation_logs
         .iter()
         .flat_map(|(f, logs)| {
-            logs.iter().rev().filter(|l| {
-                matches!(
-                    l.status,
-                    crate::monitor::LogStatus::Completed | crate::monitor::LogStatus::Failed(_)
-                )
-            }).map(move |l| {
-                serde_json::json!({
-                    "feed_name": f,
-                    "article_title": l.article_title,
-                    "status": match &l.status {
-                        crate::monitor::LogStatus::Completed => "Completed",
-                        crate::monitor::LogStatus::Failed(_) => "Failed",
-                        _ => unreachable!(),
-                    },
-                    "timestamp": l.timestamp,
+            logs.iter()
+                .rev()
+                .filter(|l| {
+                    matches!(
+                        l.status,
+                        crate::monitor::LogStatus::Completed | crate::monitor::LogStatus::Failed(_)
+                    )
                 })
-            })
+                .map(move |l| {
+                    serde_json::json!({
+                        "feed_name": f,
+                        "article_title": l.article_title,
+                        "status": match &l.status {
+                            crate::monitor::LogStatus::Completed => "Completed",
+                            crate::monitor::LogStatus::Failed(_) => "Failed",
+                            _ => unreachable!(),
+                        },
+                        "timestamp": l.timestamp,
+                    })
+                })
         })
         .collect();
-    recent_logs.sort_by(|a, b| {
-        b["timestamp"].as_str().cmp(&a["timestamp"].as_str())
-    });
+    recent_logs.sort_by(|a, b| b["timestamp"].as_str().cmp(&a["timestamp"].as_str()));
     recent_logs.truncate(5);
     let mut ctx = Context::new();
     ctx.insert("title", "rssume Monitor");
