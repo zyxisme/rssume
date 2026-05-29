@@ -145,8 +145,13 @@ impl Scheduler {
                 Ok((feed_name, title, Ok(article))) => {
                     if let Err(e) = article.save_to_file(&feed_name) {
                         tracing::error!("Failed to save article '{}': {}", title, e);
+                        monitor.write().await.complete_article(&feed_name, &title);
+                        continue;
                     }
                     feed_meta.add_article(&article.id, &article.published_at);
+                    if let Err(e) = feed_meta.save(&feed_name) {
+                        tracing::error!("Failed to save feed meta '{}': {}", feed_name, e);
+                    }
                     monitor.write().await.complete_article(&feed_name, &title);
                 }
                 Ok((feed_name, title, Err(e))) => {
