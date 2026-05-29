@@ -35,7 +35,7 @@
             <span class="badge">{{ t.model }}</span>
         </div>
         {% if t.streamed_text %}
-        <div style="margin-top:8px;font-size:13px;color:var(--mute);white-space:pre-wrap;">{{ t.streamed_text }}</div>
+        <div class="stream-text" style="margin-top:8px;font-size:13px;color:var(--mute);max-height:200px;overflow-y:auto;white-space:pre-wrap;">{{ t.streamed_text }}</div>
         {% endif %}
     </div>
     {% endfor %}
