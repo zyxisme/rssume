@@ -54,6 +54,8 @@ pub struct FeedConfig {
     pub enabled: bool,
     #[serde(default = "default_interval")]
     pub interval_secs: u64,
+    #[serde(default = "default_max_articles")]
+    pub max_articles: usize,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
@@ -85,6 +87,9 @@ fn default_log_level() -> String {
 }
 fn default_max_concurrent_requests() -> usize {
     3
+}
+fn default_max_articles() -> usize {
+    25
 }
 
 impl Config {
@@ -158,12 +163,14 @@ name = "hacker-news"
 url = "https://hnrss.org/frontpage"
 enabled = true
 interval_secs = 300
+max_articles = 25
 
 [[feeds]]
 name = "rust-blog"
 url = "https://blog.rust-lang.org/feed.xml"
 enabled = true
 interval_secs = 600
+max_articles = 25
 
 [logging]
 level = "info"
