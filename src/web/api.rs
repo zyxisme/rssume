@@ -138,7 +138,9 @@ async fn monitor_translating(
                     _ => &0u32,
                 },
                 "translating_in_progress": match rt.map(|r| &r.status) {
-                    Some(crate::monitor::FeedStatus::Translating { in_progress, .. }) => in_progress.clone(),
+                    Some(crate::monitor::FeedStatus::Translating {
+                        in_progress, ..
+                    }) => in_progress.clone(),
                     _ => vec![],
                 },
             })
@@ -222,7 +224,9 @@ async fn monitor_feed_translating(
             _ => &0u32,
         },
         "translating_in_progress": match rt.map(|r| &r.status) {
-            Some(crate::monitor::FeedStatus::Translating { in_progress, .. }) => in_progress.clone(),
+            Some(crate::monitor::FeedStatus::Translating {
+                in_progress, ..
+            }) => in_progress.clone(),
             _ => vec![],
         },
     });

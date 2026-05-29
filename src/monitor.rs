@@ -104,7 +104,9 @@ impl Monitor {
             .flat_map(|(f, logs)| {
                 logs.iter()
                     .rev()
-                    .filter(|l| matches!(l.status, LogStatus::Started | LogStatus::Streaming { .. }))
+                    .filter(|l| {
+                        matches!(l.status, LogStatus::Started | LogStatus::Streaming { .. })
+                    })
                     .map(move |l| (f.clone(), l))
             })
             .collect()
