@@ -38,12 +38,16 @@
 - `templates/partials/monitor_status.html` (line 34):
   - Change `overflow:hidden` to `overflow-y:auto`
   - Add `class="stream-text"` to the streamed text div
-  - Add `hx-on:after-swap` on the polling target: `document.querySelectorAll('.stream-text').forEach(el => el.scrollTop = el.scrollHeight)`
 
 - `templates/partials/feed_monitor_status.html` (line 38):
   - Add `max-height:200px;overflow-y:auto` (currently unbounded)
   - Add `class="stream-text"` to the streamed text div
-  - Add `hx-on:after-swap` on the polling target for auto-scroll
+
+- `templates/monitor.html` (line 7):
+  - Add `hx-on:after-swap="document.querySelectorAll('.stream-text').forEach(el => el.scrollTop = el.scrollHeight)"` on the trigger div
+
+- `templates/feed_monitor.html` (line 14):
+  - Same `hx-on:after-swap` on the trigger div
 
 ## Files to Modify
 
@@ -51,12 +55,14 @@
 |------|--------|
 | `src/opml.rs` | Add `base_url` param, use rssume URLs, add `htmlUrl` |
 | `src/web/api.rs` | Extract request base URL in `export_opml` handler |
-| `templates/partials/monitor_status.html` | CSS fix + auto-scroll JS |
-| `templates/partials/feed_monitor_status.html` | CSS fix + auto-scroll JS |
+| `templates/partials/monitor_status.html` | CSS fix (overflow + class) |
+| `templates/partials/feed_monitor_status.html` | CSS fix (overflow + class) |
+| `templates/monitor.html` | Add `hx-on:after-swap` for auto-scroll |
+| `templates/feed_monitor.html` | Add `hx-on:after-swap` for auto-scroll |
 
 ## No Changes Needed
 
 - `src/config.rs`: No new config fields required
-- `src/web/panel.rs`: Page handlers unchanged (HTMX polling targets are in the partials)
+- `src/web/panel.rs`: Page handlers unchanged
 - `src/monitor.rs`: Data model unchanged
 - `src/scheduler.rs`: Streaming logic unchanged
