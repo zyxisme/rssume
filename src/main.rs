@@ -3,6 +3,7 @@ mod error;
 mod lang;
 mod llm;
 mod monitor;
+mod opml;
 mod rss;
 mod scheduler;
 mod storage;

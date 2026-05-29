@@ -95,7 +95,7 @@ pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
     xml
 }
 
-fn esc(s: &str) -> String {
+pub(crate) fn esc(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")

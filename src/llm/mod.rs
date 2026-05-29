@@ -1,5 +1,4 @@
-pub mod summarize;
-pub mod translate;
+pub mod translate_summarize;
 
 use crate::config::LlmProviderConfig;
 use futures_util::StreamExt;

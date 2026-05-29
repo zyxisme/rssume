@@ -1,8 +1,7 @@
 use crate::config::Config;
-use crate::llm::{summarize, translate};
 use crate::monitor::{FeedStatus, LogStatus, Monitor, TranslationLog, TranslationStage};
 use crate::rss::fetch;
-use crate::storage::{Article, Enclosure, FeedData};
+use crate::storage::{Article, Enclosure, FeedData, FeedMeta};
 use std::sync::Arc;
 use tokio::sync::{RwLock, Semaphore};
 use uuid::Uuid;
@@ -48,13 +47,24 @@ impl Scheduler {
                 return;
             }
         };
+
+        let max_articles = {
+            let cfg = self.config.read().await;
+            cfg.feeds
+                .iter()
+                .find(|f| f.name == feed_name)
+                .map(|f| f.max_articles)
+                .unwrap_or(25)
+        };
+        let raw_articles: Vec<_> = raw_articles.into_iter().take(max_articles).collect();
+
         self.monitor.write().await.finish_fetch(
             feed_name,
             start.elapsed().as_millis() as u64,
             None,
         );
 
-        let mut feed_data = match FeedData::load(feed_name) {
+        let feed_data = match FeedData::load(feed_name) {
             Ok(d) => d,
             Err(e) => {
                 tracing::error!("Load failed: {}", e);
@@ -76,6 +86,14 @@ impl Scheduler {
             return;
         }
 
+        let mut feed_meta = match FeedMeta::load(feed_name) {
+            Ok(m) => m,
+            Err(e) => {
+                tracing::error!("Load meta failed '{}': {}", feed_name, e);
+                return;
+            }
+        };
+
         let total = new_articles.len() as u32;
 
         self.monitor.write().await.set_status(
@@ -88,7 +106,6 @@ impl Scheduler {
         );
 
         let tc = config.llm.translation.clone();
-        let sc = config.llm.summary.clone();
         let target = config.language.target.clone();
         let semaphore = self.semaphore.clone();
         let monitor = self.monitor.clone();
@@ -98,7 +115,6 @@ impl Scheduler {
             .into_iter()
             .map(|raw| {
                 let tc = tc.clone();
-                let sc = sc.clone();
                 let target = target.clone();
                 let semaphore = semaphore.clone();
                 let monitor = monitor.clone();
@@ -110,7 +126,6 @@ impl Scheduler {
                         &feed_name,
                         raw,
                         &tc,
-                        &sc,
                         &target,
                         semaphore,
                         monitor.clone(),
@@ -124,7 +139,15 @@ impl Scheduler {
         for handle in handles {
             match handle.await {
                 Ok((feed_name, title, Ok(article))) => {
-                    feed_data.articles.push(article);
+                    if let Err(e) = article.save_to_file(&feed_name) {
+                        tracing::error!("Failed to save article '{}': {}", title, e);
+                        monitor.write().await.complete_article(&feed_name, &title);
+                        continue;
+                    }
+                    feed_meta.add_article(&article.id, &article.published_at);
+                    if let Err(e) = feed_meta.save(&feed_name) {
+                        tracing::error!("Failed to save feed meta '{}': {}", feed_name, e);
+                    }
                     monitor.write().await.complete_article(&feed_name, &title);
                 }
                 Ok((feed_name, title, Err(e))) => {
@@ -137,18 +160,14 @@ impl Scheduler {
             }
         }
 
-        feed_data
-            .articles
-            .sort_by(|a, b| b.published_at.cmp(&a.published_at));
-
-        if let Err(e) = feed_data.save(feed_name) {
-            tracing::error!("Save failed '{}': {}", feed_name, e);
+        if let Err(e) = feed_meta.save(feed_name) {
+            tracing::error!("Failed to save feed meta '{}': {}", feed_name, e);
         }
 
         tracing::info!(
             "Feed '{}' processed: {} total",
             feed_name,
-            feed_data.article_count()
+            feed_meta.article_ids.len()
         );
         self.monitor
             .write()
@@ -235,7 +254,6 @@ async fn process_single_article(
     feed_name: &str,
     raw: crate::rss::fetch::RawArticle,
     tc: &crate::config::LlmProviderConfig,
-    sc: &crate::config::LlmProviderConfig,
     target: &str,
     semaphore: Arc<Semaphore>,
     monitor: Arc<RwLock<Monitor>>,
@@ -244,175 +262,123 @@ async fn process_single_article(
     monitor.write().await.start_article(feed_name, &title, 1);
 
     let source_lang = crate::lang::detect(&raw.content).or_else(|| crate::lang::detect(&raw.title));
-    let needs_ct = !raw.content.is_empty() && crate::lang::needs_translation(&raw.content, target);
-    let needs_tt = crate::lang::needs_translation(&raw.title, target);
+    let needs_translation =
+        !raw.content.is_empty() && crate::lang::needs_translation(&raw.content, target);
+    let needs_title_translation = crate::lang::needs_translation(&raw.title, target);
+
+    if !needs_translation && !needs_title_translation {
+        return Ok(Article {
+            id: raw
+                .guid
+                .clone()
+                .unwrap_or_else(|| Uuid::new_v4().to_string()),
+            feed_name: feed_name.to_string(),
+            title: raw.title.clone(),
+            original_title: raw.title,
+            link: raw.link,
+            content: raw.content.clone(),
+            original_content: raw.content,
+            summary: None,
+            translated: false,
+            translated_title: false,
+            source_lang,
+            published_at: raw.published_at.clone(),
+            published_at_rfc2822: chrono::DateTime::parse_from_rfc2822(&raw.published_at)
+                .ok()
+                .map(|dt| dt.to_rfc2822()),
+            processed_at: chrono::Utc::now().to_rfc3339(),
+            author: raw.author,
+            categories: raw.categories,
+            translation_model: None,
+            translation_tokens: None,
+            enclosure: raw.media_urls.first().map(|m| Enclosure {
+                url: m.url.clone(),
+                content_type: m.content_type.clone(),
+                length: m.length,
+            }),
+        });
+    }
+
     let model = tc.model.clone();
-    let sum_model = sc.model.clone();
-    let mut total_translation_tokens: u32 = 0;
 
-    // ---- Title Translation ----
-    let (final_title, tt) = if needs_tt {
-        let _permit = semaphore.acquire().await.unwrap();
-        let log = mlog(&raw.title, TranslationStage::TranslatingTitle, &model);
-        let lid = log.id.clone();
-        monitor.write().await.add_log(feed_name, log);
-        let ot = mtok(monitor.clone(), feed_name.to_string(), lid.clone());
-        match translate::translate(tc, &raw.title, target, ot).await {
-            Ok(r) => {
-                let translated = r.text != raw.title;
-                monitor.write().await.update_log(feed_name, &lid, |l| {
-                    if translated {
-                        l.status = LogStatus::Completed;
-                        l.prompt_tokens = Some(r.usage.prompt_tokens);
-                        l.completion_tokens = Some(r.usage.completion_tokens);
-                    } else {
-                        l.status = LogStatus::Failed("model returned untranslated text".into());
-                    }
-                });
-                if translated {
-                    total_translation_tokens += r.usage.prompt_tokens + r.usage.completion_tokens;
-                    monitor.write().await.add_token_usage(
-                        feed_name,
-                        &model,
-                        r.usage.prompt_tokens,
-                        r.usage.completion_tokens,
-                    );
-                }
-                (
-                    if translated {
-                        r.text
-                    } else {
-                        raw.title.clone()
-                    },
-                    translated,
-                )
-            }
-            Err(e) => {
-                monitor.write().await.update_log(feed_name, &lid, |l| {
-                    l.status = LogStatus::Failed(e.to_string());
-                });
-                (raw.title.clone(), false)
-            }
+    let _permit = semaphore.acquire().await.unwrap();
+    let log = mlog(&raw.title, TranslationStage::TranslateAndSummarize, &model);
+    let lid = log.id.clone();
+    monitor.write().await.add_log(feed_name, log);
+    let ot = mtok(monitor.clone(), feed_name.to_string(), lid.clone());
+
+    match crate::llm::translate_summarize::translate_and_summarize(
+        tc,
+        &raw.title,
+        &raw.content,
+        target,
+        ot,
+    )
+    .await
+    {
+        Ok((result, parsed)) => {
+            let translated_title = parsed.title.is_some();
+            let translated_content = parsed.content.is_some();
+
+            monitor.write().await.update_log(feed_name, &lid, |l| {
+                l.status = LogStatus::Completed;
+                l.prompt_tokens = Some(result.usage.prompt_tokens);
+                l.completion_tokens = Some(result.usage.completion_tokens);
+            });
+
+            monitor.write().await.add_token_usage(
+                feed_name,
+                &model,
+                result.usage.prompt_tokens,
+                result.usage.completion_tokens,
+            );
+
+            let final_title = parsed.title.unwrap_or_else(|| raw.title.clone());
+            let final_content = parsed.content.unwrap_or_else(|| raw.content.clone());
+            let summary = parsed.summary;
+
+            Ok(Article {
+                id: raw
+                    .guid
+                    .clone()
+                    .unwrap_or_else(|| Uuid::new_v4().to_string()),
+                feed_name: feed_name.to_string(),
+                title: final_title,
+                original_title: raw.title,
+                link: raw.link,
+                content: final_content,
+                original_content: raw.content,
+                summary,
+                translated: translated_content,
+                translated_title,
+                source_lang,
+                published_at: raw.published_at.clone(),
+                published_at_rfc2822: chrono::DateTime::parse_from_rfc2822(&raw.published_at)
+                    .ok()
+                    .map(|dt| dt.to_rfc2822()),
+                processed_at: chrono::Utc::now().to_rfc3339(),
+                author: raw.author,
+                categories: raw.categories,
+                translation_model: if translated_content || translated_title {
+                    Some(model.clone())
+                } else {
+                    None
+                },
+                translation_tokens: Some(
+                    result.usage.prompt_tokens + result.usage.completion_tokens,
+                ),
+                enclosure: raw.media_urls.first().map(|m| Enclosure {
+                    url: m.url.clone(),
+                    content_type: m.content_type.clone(),
+                    length: m.length,
+                }),
+            })
         }
-    } else {
-        (raw.title.clone(), false)
-    };
-
-    // ---- Content Translation ----
-    let (final_content, ct) = if needs_ct {
-        let _permit = semaphore.acquire().await.unwrap();
-        let log = mlog(&raw.title, TranslationStage::TranslatingContent, &model);
-        let lid = log.id.clone();
-        monitor.write().await.add_log(feed_name, log);
-        let ot = mtok(monitor.clone(), feed_name.to_string(), lid.clone());
-        match translate::translate(tc, &raw.content, target, ot).await {
-            Ok(r) => {
-                let translated = r.text != raw.content;
-                monitor.write().await.update_log(feed_name, &lid, |l| {
-                    if translated {
-                        l.status = LogStatus::Completed;
-                        l.prompt_tokens = Some(r.usage.prompt_tokens);
-                        l.completion_tokens = Some(r.usage.completion_tokens);
-                    } else {
-                        l.status = LogStatus::Failed("model returned untranslated text".into());
-                    }
-                });
-                if translated {
-                    total_translation_tokens += r.usage.prompt_tokens + r.usage.completion_tokens;
-                    monitor.write().await.add_token_usage(
-                        feed_name,
-                        &model,
-                        r.usage.prompt_tokens,
-                        r.usage.completion_tokens,
-                    );
-                }
-                (
-                    if translated {
-                        r.text
-                    } else {
-                        raw.content.clone()
-                    },
-                    translated,
-                )
-            }
-            Err(e) => {
-                monitor.write().await.update_log(feed_name, &lid, |l| {
-                    l.status = LogStatus::Failed(e.to_string());
-                });
-                (raw.content.clone(), false)
-            }
+        Err(e) => {
+            monitor.write().await.update_log(feed_name, &lid, |l| {
+                l.status = LogStatus::Failed(e.to_string());
+            });
+            Err(e)
         }
-    } else {
-        (raw.content.clone(), false)
-    };
-
-    // ---- Summarization ----
-    let summary = {
-        let _permit = semaphore.acquire().await.unwrap();
-        let log = mlog(&final_title, TranslationStage::Summarizing, &sum_model);
-        let lid = log.id.clone();
-        monitor.write().await.add_log(feed_name, log);
-        let ot = mtok(monitor.clone(), feed_name.to_string(), lid.clone());
-        match summarize::summarize(sc, &final_title, &final_content, ot).await {
-            Ok(r) => {
-                monitor.write().await.update_log(feed_name, &lid, |l| {
-                    l.status = LogStatus::Completed;
-                    l.prompt_tokens = Some(r.usage.prompt_tokens);
-                    l.completion_tokens = Some(r.usage.completion_tokens);
-                });
-                monitor.write().await.add_token_usage(
-                    feed_name,
-                    &sum_model,
-                    r.usage.prompt_tokens,
-                    r.usage.completion_tokens,
-                );
-                Some(r.text)
-            }
-            Err(e) => {
-                monitor.write().await.update_log(feed_name, &lid, |l| {
-                    l.status = LogStatus::Failed(e.to_string());
-                });
-                None
-            }
-        }
-    };
-
-    let enclosure = raw.media_urls.first().map(|m| Enclosure {
-        url: m.url.clone(),
-        content_type: m.content_type.clone(),
-        length: m.length,
-    });
-
-    let translation_tokens = if total_translation_tokens > 0 {
-        Some(total_translation_tokens)
-    } else {
-        None
-    };
-
-    Ok(Article {
-        id: raw
-            .guid
-            .clone()
-            .unwrap_or_else(|| Uuid::new_v4().to_string()),
-        feed_name: feed_name.to_string(),
-        title: final_title,
-        original_title: raw.title,
-        link: raw.link,
-        content: final_content,
-        original_content: raw.content,
-        summary,
-        translated: ct,
-        translated_title: tt,
-        source_lang,
-        published_at: raw.published_at.clone(),
-        published_at_rfc2822: chrono::DateTime::parse_from_rfc2822(&raw.published_at)
-            .ok()
-            .map(|dt| dt.to_rfc2822()),
-        processed_at: chrono::Utc::now().to_rfc3339(),
-        author: raw.author,
-        categories: raw.categories,
-        translation_model: if ct || tt { Some(model.clone()) } else { None },
-        translation_tokens,
-        enclosure,
-    })
+    }
 }
