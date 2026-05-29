@@ -67,23 +67,7 @@ pub async fn translate_and_summarize(
         };
 
         match parse_llm_output(&result.text) {
-            Ok(parsed) => {
-                // Check if translated content is in target language
-                if let Some(ref content_text) = parsed.content
-                    && crate::lang::needs_translation(content_text, target_lang)
-                {
-                    tracing::warn!(
-                        "Attempt {}/{}: Translated content not in target language, retrying",
-                        attempt + 1,
-                        MAX_RETRIES + 1
-                    );
-                    last_error = Some(crate::error::AppError::Llm(
-                        "Translated content not in target language".into(),
-                    ));
-                    continue;
-                }
-                return Ok((result, parsed));
-            }
+            Ok(parsed) => return Ok((result, parsed)),
             Err(e) => {
                 tracing::warn!(
                     "Attempt {}/{}: Failed to parse LLM output: {}, retrying",

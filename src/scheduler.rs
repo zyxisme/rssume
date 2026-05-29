@@ -121,6 +121,9 @@ impl Scheduler {
                 let feed_name = feed_name_owned.clone();
 
                 let title = raw.title.clone();
+                let link = raw.link.clone();
+                let published_at = raw.published_at.clone();
+                let guid = raw.guid.clone();
                 tokio::spawn(async move {
                     let result = process_single_article(
                         &feed_name,
@@ -131,14 +134,14 @@ impl Scheduler {
                         monitor.clone(),
                     )
                     .await;
-                    (feed_name, title, result)
+                    (feed_name, title, link, published_at, guid, result)
                 })
             })
             .collect();
 
         for handle in handles {
             match handle.await {
-                Ok((feed_name, title, Ok(article))) => {
+                Ok((feed_name, title, _link, _published_at, _guid, Ok(article))) => {
                     if let Err(e) = article.save_to_file(&feed_name) {
                         tracing::error!("Failed to save article '{}': {}", title, e);
                         monitor.write().await.complete_article(&feed_name, &title);
@@ -150,8 +153,34 @@ impl Scheduler {
                     }
                     monitor.write().await.complete_article(&feed_name, &title);
                 }
-                Ok((feed_name, title, Err(e))) => {
-                    tracing::error!("Article processing failed '{}': {}", feed_name, e);
+                Ok((feed_name, title, link, published_at, guid, Err(e))) => {
+                    tracing::error!("Article processing failed '{}': {}", title, e);
+                    // Save raw article to avoid reprocessing
+                    let article = Article {
+                        id: guid.unwrap_or_else(|| Uuid::new_v4().to_string()),
+                        feed_name: feed_name.clone(),
+                        title: title.clone(),
+                        original_title: title.clone(),
+                        link,
+                        content: String::new(),
+                        original_content: String::new(),
+                        summary: None,
+                        translated: false,
+                        translated_title: false,
+                        source_lang: None,
+                        published_at,
+                        published_at_rfc2822: None,
+                        processed_at: chrono::Utc::now().to_rfc3339(),
+                        author: None,
+                        categories: vec![],
+                        translation_model: None,
+                        translation_tokens: None,
+                        enclosure: None,
+                    };
+                    if let Err(e) = article.save_to_file(&feed_name) {
+                        tracing::error!("Failed to save failed article '{}': {}", title, e);
+                    }
+                    feed_meta.add_article(&article.id, &article.published_at);
                     monitor.write().await.complete_article(&feed_name, &title);
                 }
                 Err(e) => {

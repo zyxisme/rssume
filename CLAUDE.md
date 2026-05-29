@@ -35,8 +35,8 @@ src/
 │   └── generate.rs  # Generate RSS 2.0 XML from stored articles
 ├── llm/
 │   ├── mod.rs
-│   ├── translate.rs # LLM translation (OpenAI-compatible API)
-│   └── summarize.rs # LLM summarization (OpenAI-compatible API)
+│   └── translate_summarize.rs # LLM translation + summarization (OpenAI-compatible API)
+├── opml.rs          # OPML export for feed subscriptions
 └── web/
     ├── mod.rs       # Router composition
     ├── panel.rs     # Web dashboard pages (tera templates)
@@ -75,6 +75,8 @@ Design system: Vercel-inspired (see DESIGN.md)
 ## Build & Run
 
 ```bash
+cargo fmt --check && cargo clippy --all-targets
+cargo test
 # Just run — config auto-created on first run, templates embedded at compile time
 cargo build --release
 ./target/release/rssume
@@ -86,9 +88,9 @@ cargo build --release
 
 - Push/PR CI (`.github/workflows/ci.yml`): fmt → clippy → test(3os) + build(4 targets), Windows uses debug profile for speed
 - Release CI (`.github/workflows/release.yml`): triggered by `v*` tags, builds 4 targets, publishes via `softprops/action-gh-release`
-- `RUSTFLAGS: -Dwarnings` in CI — all warnings are fatal, must pass `cargo fmt --check && cargo clippy --all-targets` cleanly before pushing
-- Check CI status via API if `gh` CLI not authenticated: `curl -s "https://api.github.com/repos/zyxisme/rssume/commits/<sha>/check-runs"`
-- Fast feedback: push to trigger CI then check results — CI runners are faster than local builds
+- `RUSTFLAGS: -Dwarnings` in CI — all warnings are fatal
+- **Do not run local builds** — commit → push → check CI via API: `curl -s "https://api.github.com/repos/zyxisme/rssume/commits/<sha>/check-runs"`
+- CI runners are faster and more reliable than local builds
 
 ## Deployment Model
 
@@ -114,7 +116,5 @@ cargo build --release
 ## Release & Versioning
 
 - Default version bump: `0.0.1` unless user specifies otherwise
-- Pre-publish: version bump → `cargo fmt --check && cargo clippy --all-targets` → commit
-  Cargo.toml + Cargo.lock → `cargo publish` → push + tag. Publish on a clean tree, don't
-  use `--allow-dirty`.
+- Pre-publish: version bump → commit Cargo.toml + Cargo.lock → push to CI → wait for CI pass → `cargo publish` → push tag. Publish on a clean tree, don't use `--allow-dirty`.
 - Release CI triggers on `v*` tag push, builds 4 targets, uploads to GitHub Releases
