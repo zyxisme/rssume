@@ -48,6 +48,17 @@ impl Scheduler {
                 return;
             }
         };
+
+        let max_articles = {
+            let cfg = self.config.read().await;
+            cfg.feeds
+                .iter()
+                .find(|f| f.name == feed_name)
+                .map(|f| f.max_articles)
+                .unwrap_or(25)
+        };
+        let raw_articles: Vec<_> = raw_articles.into_iter().take(max_articles).collect();
+
         self.monitor.write().await.finish_fetch(
             feed_name,
             start.elapsed().as_millis() as u64,
