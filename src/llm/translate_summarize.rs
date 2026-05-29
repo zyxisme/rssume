@@ -1,6 +1,8 @@
 use super::{StreamResult, chat_stream};
 use crate::config::LlmProviderConfig;
 
+const MAX_RETRIES: u32 = 2;
+
 const SYSTEM_PROMPT: &str = r#"You are a professional translator and summarizer. Translate the article below into the target language, then generate a concise summary.
 
 Output in this EXACT format (tags must be on their own line):
@@ -40,7 +42,7 @@ pub async fn translate_and_summarize(
     title: &str,
     content: &str,
     target_lang: &str,
-    on_token: impl FnMut(&str),
+    mut on_token: impl FnMut(&str),
 ) -> Result<(StreamResult, ParsedArticle), crate::error::AppError> {
     let prompt = format!(
         "Translate the following article to {}:\n\nTitle: {}\n\nContent:\n{}",
@@ -53,9 +55,50 @@ pub async fn translate_and_summarize(
         format!("{}\n{}", prompt, append)
     };
 
-    let result = chat_stream(config, SYSTEM_PROMPT, &full, on_token).await?;
-    let parsed = parse_llm_output(&result.text)?;
-    Ok((result, parsed))
+    let mut last_error = None;
+
+    for attempt in 0..=MAX_RETRIES {
+        let result = match chat_stream(config, SYSTEM_PROMPT, &full, &mut on_token).await {
+            Ok(r) => r,
+            Err(e) => {
+                last_error = Some(e);
+                continue;
+            }
+        };
+
+        match parse_llm_output(&result.text) {
+            Ok(parsed) => {
+                // Check if translated content is in target language
+                if let Some(ref content_text) = parsed.content {
+                    if crate::lang::needs_translation(content_text, target_lang) {
+                        tracing::warn!(
+                            "Attempt {}/{}: Translated content not in target language, retrying",
+                            attempt + 1,
+                            MAX_RETRIES + 1
+                        );
+                        last_error = Some(crate::error::AppError::Llm(
+                            "Translated content not in target language".into(),
+                        ));
+                        continue;
+                    }
+                }
+                return Ok((result, parsed));
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Attempt {}/{}: Failed to parse LLM output: {}, retrying",
+                    attempt + 1,
+                    MAX_RETRIES + 1,
+                    e
+                );
+                last_error = Some(e);
+            }
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| {
+        crate::error::AppError::Llm("All retry attempts failed".into())
+    }))
 }
 
 fn parse_llm_output(text: &str) -> Result<ParsedArticle, crate::error::AppError> {
