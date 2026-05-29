@@ -106,7 +106,6 @@ impl Scheduler {
         );
 
         let tc = config.llm.translation.clone();
-        let sc = config.llm.summary.clone();
         let target = config.language.target.clone();
         let semaphore = self.semaphore.clone();
         let monitor = self.monitor.clone();
@@ -116,7 +115,6 @@ impl Scheduler {
             .into_iter()
             .map(|raw| {
                 let tc = tc.clone();
-                let sc = sc.clone();
                 let target = target.clone();
                 let semaphore = semaphore.clone();
                 let monitor = monitor.clone();
@@ -128,7 +126,6 @@ impl Scheduler {
                         &feed_name,
                         raw,
                         &tc,
-                        &sc,
                         &target,
                         semaphore,
                         monitor.clone(),
@@ -257,7 +254,6 @@ async fn process_single_article(
     feed_name: &str,
     raw: crate::rss::fetch::RawArticle,
     tc: &crate::config::LlmProviderConfig,
-    _sc: &crate::config::LlmProviderConfig,
     target: &str,
     semaphore: Arc<Semaphore>,
     monitor: Arc<RwLock<Monitor>>,
@@ -306,7 +302,7 @@ async fn process_single_article(
     let model = tc.model.clone();
 
     let _permit = semaphore.acquire().await.unwrap();
-    let log = mlog(&raw.title, TranslationStage::TranslatingContent, &model);
+    let log = mlog(&raw.title, TranslationStage::TranslateAndSummarize, &model);
     let lid = log.id.clone();
     monitor.write().await.add_log(feed_name, log);
     let ot = mtok(monitor.clone(), feed_name.to_string(), lid.clone());

@@ -182,9 +182,7 @@ pub struct TranslationLog {
 
 #[derive(Debug, Clone, Serialize)]
 pub enum TranslationStage {
-    TranslatingTitle,
-    TranslatingContent,
-    Summarizing,
+    TranslateAndSummarize,
 }
 
 #[derive(Debug, Clone, Serialize)]
