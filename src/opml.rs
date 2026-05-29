@@ -1,4 +1,5 @@
 use crate::config::FeedConfig;
+use crate::rss::generate::esc;
 
 pub fn generate_opml(feeds: &[FeedConfig]) -> String {
     let outlines: String = feeds
@@ -7,9 +8,9 @@ pub fn generate_opml(feeds: &[FeedConfig]) -> String {
         .map(|f| {
             format!(
                 r#"      <outline type="rss" text="{}" title="{}" xmlUrl="{}"/>"#,
-                escape_xml(&f.name),
-                escape_xml(&f.name),
-                escape_xml(&f.url)
+                esc(&f.name),
+                esc(&f.name),
+                esc(&f.url)
             )
         })
         .collect::<Vec<_>>()
@@ -31,12 +32,4 @@ pub fn generate_opml(feeds: &[FeedConfig]) -> String {
         chrono::Utc::now().to_rfc3339(),
         outlines
     )
-}
-
-fn escape_xml(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
-        .replace('\'', "&apos;")
 }
