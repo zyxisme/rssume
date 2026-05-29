@@ -165,6 +165,7 @@ async fn monitor_translating(
         .collect();
     let active_translations: Vec<serde_json::Value> = active
         .iter()
+        .take(5)
         .map(|(f, l)| {
             serde_json::json!({
                 "feed_name": f,
@@ -177,11 +178,36 @@ async fn monitor_translating(
             })
         })
         .collect();
+    let mut recent_logs: Vec<serde_json::Value> = mon
+        .translation_logs
+        .iter()
+        .flat_map(|(f, logs)| {
+            logs.iter().rev().filter(|l| {
+                matches!(l.status, LogStatus::Completed | LogStatus::Failed(_))
+            }).map(move |l| {
+                serde_json::json!({
+                    "feed_name": f,
+                    "article_title": l.article_title,
+                    "status": match &l.status {
+                        LogStatus::Completed => "Completed",
+                        LogStatus::Failed(_) => "Failed",
+                        _ => unreachable!(),
+                    },
+                    "timestamp": l.timestamp,
+                })
+            })
+        })
+        .collect();
+    recent_logs.sort_by(|a, b| {
+        b["timestamp"].as_str().cmp(&a["timestamp"].as_str())
+    });
+    recent_logs.truncate(5);
     let tera = super::panel::tera_instance()?;
     let mut ctx = Context::new();
     ctx.insert("feeds", &feeds);
     ctx.insert("active", &active_translations);
     ctx.insert("recent_count", &recent_count);
+    ctx.insert("recent_logs", &recent_logs);
     Ok(Html(
         tera.render("partials/monitor_status.html", &ctx)
             .map_err(|e| crate::error::AppError::Storage(format!("render: {}", e)))?,

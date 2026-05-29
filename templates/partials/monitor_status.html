@@ -44,8 +44,19 @@
 
 <h2 style="margin-top:24px;">Recently Completed</h2>
 <div id="recent-logs">
-    {% if recent_count > 0 %}
-    <p style="color:var(--mute);">{{ recent_count }} translations completed in this session</p>
+    {% if recent_logs | length > 0 %}
+    {% for log in recent_logs %}
+    <div class="card" style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span><strong>{{ log.feed_name }}</strong> &mdash; {{ log.article_title | truncate(length=50) }}</span>
+            <span class="badge {% if log.status == 'Completed' %}badge-success{% else %}badge-error{% endif %}">{{ log.status }}</span>
+        </div>
+        <div style="font-size:12px;color:var(--mute);margin-top:4px;">{{ log.timestamp | truncate(length=19) }}</div>
+    </div>
+    {% endfor %}
+    {% if recent_count > 5 %}
+    <p style="color:var(--mute);font-size:12px;margin-top:8px;">... and {{ recent_count - 5 }} more</p>
+    {% endif %}
     {% else %}
     <p style="color:var(--mute);">No recent translations</p>
     {% endif %}
