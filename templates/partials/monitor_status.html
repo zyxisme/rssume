@@ -8,7 +8,7 @@
         <div style="font-size:13px;color:var(--mute);">
             {{ feed.articles }} articles &middot;
             {% if feed.status is starting_with('Translating') %}
-                Translating {{ feed.translating_completed }}/{{ feed.translating_total }}
+                Translating {{ feed.translating_completed }}/{{ feed.translating_total }} ({{ feed.translating_in_progress | length }} in progress)
             {% elif feed.status == 'Fetching' %}
                 Fetching...
             {% elif feed.last_fetch_at %}
