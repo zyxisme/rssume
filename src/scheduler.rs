@@ -243,8 +243,7 @@ async fn process_single_article(
     let title = raw.title.clone();
     monitor.write().await.start_article(feed_name, &title, 1);
 
-    let source_lang = crate::lang::detect(&raw.content)
-        .or_else(|| crate::lang::detect(&raw.title));
+    let source_lang = crate::lang::detect(&raw.content).or_else(|| crate::lang::detect(&raw.title));
     let needs_ct = !raw.content.is_empty() && crate::lang::needs_translation(&raw.content, target);
     let needs_tt = crate::lang::needs_translation(&raw.title, target);
     let model = tc.model.clone();
