@@ -3,9 +3,9 @@ use crate::config::LlmProviderConfig;
 
 const MAX_RETRIES: u32 = 2;
 
-const SYSTEM_PROMPT: &str = r#"You are a professional translator and summarizer. Translate the article below into the target language, then generate a concise summary.
+const SYSTEM_PROMPT: &str = r#"Translate the article to the target language. Then write a one-sentence summary — just what the article is about, no filler.
 
-Output in this EXACT format (tags must be on their own line):
+Output format (each tag on its own line):
 
 |||TITLE|||
 <translated title>
@@ -16,13 +16,10 @@ Output in this EXACT format (tags must be on their own line):
 |||END_CONTENT|||
 
 |||SUMMARY|||
-<concise summary in target language, approximately 150 words>
+<summary, one sentence, under 30 words>
 |||END_SUMMARY|||
 
-Important:
-- Tags like |||TITLE||| must be on their own line with no other content
-- Preserve all formatting, HTML tags, code blocks, and technical terms
-- Do not add any text outside the tagged sections"#;
+Keep HTML tags and code blocks intact."#;
 
 #[derive(Debug, Default)]
 pub struct ParsedArticle {
@@ -45,7 +42,7 @@ pub async fn translate_and_summarize(
     mut on_token: impl FnMut(&str),
 ) -> Result<(StreamResult, ParsedArticle), crate::error::AppError> {
     let prompt = format!(
-        "Translate the following article to {}:\n\nTitle: {}\n\nContent:\n{}",
+        "Target language: {}\n\nTitle: {}\n\nContent:\n{}",
         target_lang, title, content
     );
     let append = config.prompt_append.clone().unwrap_or_default();

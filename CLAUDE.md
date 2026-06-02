@@ -119,6 +119,13 @@ cargo build --release
   extract base URL from request headers: `X-Forwarded-Proto` + `X-Forwarded-Host` → `Host` header
   → config fallback. Never hardcode upstream URLs where rssume's own URL is needed.
 
+## MCP Search Strategy
+
+- **搜索/研究任务委托子代理**：需要多轮搜索或研究时，用 Agent 工具派遣子代理执行，子代理只返回 200-300 字摘要，原始内容不进入主会话上下文
+- **简单搜索可直接调用**：单次、目标明确的搜索直接用 `tavily_search`，限制 `max_results: 3`、`search_depth: "fast"`
+- **避免直接用 `tavily_research`**：该工具自动多轮搜索+全文汇总，上下文消耗极高
+- **extract/crawl 限制参数**：`extract_depth: "basic"`、`limit: 10`、`max_depth: 1`
+
 ## Release & Versioning
 
 - Default version bump: `0.0.1` unless user specifies otherwise

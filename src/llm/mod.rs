@@ -15,7 +15,8 @@ struct ChatRequest {
     model: String,
     messages: Vec<ChatMessage>,
     temperature: f32,
-    max_tokens: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_tokens: Option<u32>,
     stream: bool,
 }
 
@@ -81,8 +82,8 @@ pub async fn chat_stream(
                 content: user_prompt.into(),
             },
         ],
-        temperature: 0.3,
-        max_tokens: config.max_tokens.unwrap_or(4096),
+        temperature: 0.1,
+        max_tokens: config.max_tokens,
         stream: true,
     };
 
