@@ -1,7 +1,6 @@
 use super::{StreamResult, chat_stream};
 use crate::config::LlmProviderConfig;
-
-const MAX_RETRIES: u32 = 2;
+use crate::monitor::LogStatus;
 
 const SYSTEM_PROMPT: &str = r#"Translate the article to the target language. Then write a one-sentence summary — just what the article is about, no filler.
 
@@ -39,7 +38,7 @@ pub async fn translate_and_summarize(
     title: &str,
     content: &str,
     target_lang: &str,
-    mut on_token: impl FnMut(&str),
+    retry_ctx: &mut super::retry::RetryContext,
 ) -> Result<(StreamResult, ParsedArticle), crate::error::AppError> {
     let prompt = format!(
         "Target language: {}\n\nTitle: {}\n\nContent:\n{}",
@@ -52,33 +51,50 @@ pub async fn translate_and_summarize(
         format!("{}\n{}", prompt, append)
     };
 
-    let mut last_error = None;
+    loop {
+        retry_ctx.prepare_retry().await;
+        let log_id = retry_ctx.current_log_id().unwrap().to_string();
+        let monitor = retry_ctx.monitor.clone();
+        let feed_name = retry_ctx.feed_name.clone();
 
-    for attempt in 0..=MAX_RETRIES {
-        let result = match chat_stream(config, SYSTEM_PROMPT, &full, &mut on_token).await {
-            Ok(r) => r,
-            Err(e) => {
-                last_error = Some(e);
-                continue;
-            }
+        let ot = move |t: &str| {
+            let m = monitor.clone();
+            let f = feed_name.clone();
+            let l = log_id.clone();
+            let s = t.to_string();
+            tokio::task::spawn(async move {
+                m.write().await.update_log(&f, &l, |log| {
+                    log.streamed_text.push_str(&s);
+                    log.status = LogStatus::Streaming {
+                        tokens: log.streamed_text.clone(),
+                    };
+                });
+            });
         };
 
-        match parse_llm_output(&result.text) {
-            Ok(parsed) => return Ok((result, parsed)),
+        match chat_stream(config, SYSTEM_PROMPT, &full, ot).await {
+            Ok(result) => match parse_llm_output(&result.text) {
+                Ok(parsed) => {
+                    retry_ctx.mark_success(&result.usage).await;
+                    return Ok((result, parsed));
+                }
+                Err(e) => {
+                    retry_ctx.record_failure(e).await;
+                    if !retry_ctx.should_retry() {
+                        return Err(retry_ctx.take_last_error().unwrap());
+                    }
+                    retry_ctx.wait().await;
+                }
+            },
             Err(e) => {
-                tracing::warn!(
-                    "Attempt {}/{}: Failed to parse LLM output: {}, retrying",
-                    attempt + 1,
-                    MAX_RETRIES + 1,
-                    e
-                );
-                last_error = Some(e);
+                retry_ctx.record_failure(e).await;
+                if !retry_ctx.should_retry() {
+                    return Err(retry_ctx.take_last_error().unwrap());
+                }
+                retry_ctx.wait().await;
             }
         }
     }
-
-    Err(last_error
-        .unwrap_or_else(|| crate::error::AppError::Llm("All retry attempts failed".into())))
 }
 
 fn parse_llm_output(text: &str) -> Result<ParsedArticle, crate::error::AppError> {

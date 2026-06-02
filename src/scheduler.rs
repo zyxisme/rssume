@@ -1,5 +1,6 @@
 use crate::config::Config;
-use crate::monitor::{FeedStatus, LogStatus, Monitor, TranslationLog, TranslationStage};
+use crate::llm::retry::RetryContext;
+use crate::monitor::{FeedStatus, Monitor};
 use crate::rss::fetch;
 use crate::storage::{Article, Enclosure, FeedData, FeedMeta};
 use std::sync::Arc;
@@ -248,37 +249,6 @@ impl Scheduler {
     }
 }
 
-fn mlog(title: &str, stage: TranslationStage, model: &str) -> TranslationLog {
-    TranslationLog {
-        id: Uuid::new_v4().to_string(),
-        timestamp: chrono::Utc::now().to_rfc3339(),
-        article_title: title.to_string(),
-        stage,
-        status: LogStatus::Started,
-        model: model.to_string(),
-        prompt_tokens: None,
-        completion_tokens: None,
-        streamed_text: String::new(),
-    }
-}
-
-fn mtok(monitor: Arc<RwLock<Monitor>>, feed: String, lid: String) -> impl FnMut(&str) {
-    move |t: &str| {
-        let m = monitor.clone();
-        let f = feed.clone();
-        let l = lid.clone();
-        let s = t.to_string();
-        tokio::task::spawn(async move {
-            m.write().await.update_log(&f, &l, |log| {
-                log.streamed_text.push_str(&s);
-                log.status = LogStatus::Streaming {
-                    tokens: log.streamed_text.clone(),
-                };
-            });
-        });
-    }
-}
-
 async fn process_single_article(
     feed_name: &str,
     raw: crate::rss::fetch::RawArticle,
@@ -331,36 +301,28 @@ async fn process_single_article(
     let model = tc.model.clone();
 
     let _permit = semaphore.acquire().await.unwrap();
-    let log = mlog(&raw.title, TranslationStage::TranslateAndSummarize, &model);
-    let lid = log.id.clone();
-    monitor.write().await.add_log(feed_name, log);
-    let ot = mtok(monitor.clone(), feed_name.to_string(), lid.clone());
+
+    let mut retry_ctx = RetryContext::new(
+        2,
+        1,
+        feed_name.to_string(),
+        raw.title.clone(),
+        model.clone(),
+        monitor.clone(),
+    );
 
     match crate::llm::translate_summarize::translate_and_summarize(
         tc,
         &raw.title,
         &raw.content,
         target,
-        ot,
+        &mut retry_ctx,
     )
     .await
     {
         Ok((result, parsed)) => {
             let translated_title = parsed.title.is_some();
             let translated_content = parsed.content.is_some();
-
-            monitor.write().await.update_log(feed_name, &lid, |l| {
-                l.status = LogStatus::Completed;
-                l.prompt_tokens = Some(result.usage.prompt_tokens);
-                l.completion_tokens = Some(result.usage.completion_tokens);
-            });
-
-            monitor.write().await.add_token_usage(
-                feed_name,
-                &model,
-                result.usage.prompt_tokens,
-                result.usage.completion_tokens,
-            );
 
             let final_title = parsed.title.unwrap_or_else(|| raw.title.clone());
             let final_content = parsed.content.unwrap_or_else(|| raw.content.clone());
@@ -403,11 +365,6 @@ async fn process_single_article(
                 }),
             })
         }
-        Err(e) => {
-            monitor.write().await.update_log(feed_name, &lid, |l| {
-                l.status = LogStatus::Failed(e.to_string());
-            });
-            Err(e)
-        }
+        Err(e) => Err(e),
     }
 }

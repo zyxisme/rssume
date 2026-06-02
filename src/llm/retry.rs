@@ -7,13 +7,13 @@ use uuid::Uuid;
 pub struct RetryContext {
     pub max_retries: u32,
     pub retry_delay_secs: u64,
-    pub current_attempt: u32,
-    pub last_error: Option<AppError>,
+    current_attempt: u32,
+    last_error: Option<AppError>,
     pub feed_name: String,
     pub article_title: String,
     pub model: String,
     pub monitor: Arc<RwLock<Monitor>>,
-    pub current_log_id: Option<String>,
+    current_log_id: Option<String>,
 }
 
 impl RetryContext {
@@ -82,25 +82,28 @@ impl RetryContext {
         }
     }
 
+    pub fn current_log_id(&self) -> Option<&str> {
+        self.current_log_id.as_deref()
+    }
+
+    pub fn take_last_error(&mut self) -> Option<AppError> {
+        self.last_error.take()
+    }
+
     pub async fn mark_success(&self, usage: &crate::llm::UsageInfo) {
         if let Some(log_id) = &self.current_log_id {
-            self.monitor
-                .write()
-                .await
-                .update_log(&self.feed_name, log_id, |log| {
-                    log.status = LogStatus::Completed;
-                    log.prompt_tokens = Some(usage.prompt_tokens);
-                    log.completion_tokens = Some(usage.completion_tokens);
-                });
-            self.monitor
-                .write()
-                .await
-                .add_token_usage(
-                    &self.feed_name,
-                    &self.model,
-                    usage.prompt_tokens,
-                    usage.completion_tokens,
-                );
+            let mut monitor = self.monitor.write().await;
+            monitor.update_log(&self.feed_name, log_id, |log| {
+                log.status = LogStatus::Completed;
+                log.prompt_tokens = Some(usage.prompt_tokens);
+                log.completion_tokens = Some(usage.completion_tokens);
+            });
+            monitor.add_token_usage(
+                &self.feed_name,
+                &self.model,
+                usage.prompt_tokens,
+                usage.completion_tokens,
+            );
         }
     }
 }
@@ -222,7 +225,8 @@ mod tests {
         let mut ctx = make_ctx(3);
         ctx.prepare_retry().await;
         let first_log_id = ctx.current_log_id.clone();
-        ctx.record_failure(AppError::Llm("first failure".into())).await;
+        ctx.record_failure(AppError::Llm("first failure".into()))
+            .await;
 
         ctx.prepare_retry().await;
         let second_log_id = ctx.current_log_id.clone();
@@ -239,5 +243,33 @@ mod tests {
         let start = std::time::Instant::now();
         ctx.wait().await;
         assert!(start.elapsed() < std::time::Duration::from_millis(100));
+    }
+
+    #[test]
+    fn current_log_id_returns_none_initially() {
+        let ctx = make_ctx(3);
+        assert!(ctx.current_log_id().is_none());
+    }
+
+    #[tokio::test]
+    async fn current_log_id_returns_some_after_prepare() {
+        let mut ctx = make_ctx(3);
+        ctx.prepare_retry().await;
+        assert!(ctx.current_log_id().is_some());
+    }
+
+    #[test]
+    fn take_last_error_returns_none_initially() {
+        let mut ctx = make_ctx(3);
+        assert!(ctx.take_last_error().is_none());
+    }
+
+    #[tokio::test]
+    async fn take_last_error_returns_and_clears() {
+        let mut ctx = make_ctx(3);
+        ctx.record_failure(AppError::Llm("test".into())).await;
+        let err = ctx.take_last_error();
+        assert!(err.is_some());
+        assert!(ctx.take_last_error().is_none());
     }
 }
