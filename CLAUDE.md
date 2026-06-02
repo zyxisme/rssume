@@ -35,6 +35,7 @@ src/
 │   └── generate.rs  # Generate RSS 2.0 XML from stored articles
 ├── llm/
 │   ├── mod.rs
+│   ├── retry.rs     # RetryContext for configurable retry state management
 │   └── translate_summarize.rs # LLM translation + summarization (OpenAI-compatible API)
 ├── opml.rs          # OPML export for feed subscriptions
 └── web/
@@ -67,6 +68,10 @@ Design system: Vercel-inspired (see DESIGN.md)
 - **htmx auto-scroll**: use `hx-on:after-swap` on the trigger div. For streaming text, add
   scroll-stickiness guard: `if (el.scrollHeight - el.scrollTop - el.clientHeight < 50)` before
   setting `scrollTop = scrollHeight`, so users can scroll up without being yanked back.
+- **htmx streaming tail**: for continuously growing text (e.g., LLM token stream), truncate at
+  the API layer to the latest N lines (`tail_lines(text, n)`) instead of relying on CSS overflow
+  + auto-scroll. Remove `max-height`/`overflow-y` from the template — truncated content doesn't
+  need a scrollable container.
 
 ## LLM Integration
 
@@ -74,6 +79,7 @@ Design system: Vercel-inspired (see DESIGN.md)
 - Translation and summarization can use different models/providers
 - API keys resolved from environment variables in config (e.g., `${OPENAI_API_KEY}`)
 - Exponential backoff on rate limits
+- **Retry mechanism**: configurable via `[llm]` section — `max_retries` (default 2), `retry_delay_secs` (default 1). Each retry creates a new log entry; failed logs preserved.
 
 ## Build & Run
 
