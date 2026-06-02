@@ -163,3 +163,159 @@ fn flush_buffer(
     }
     buffer.clear();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_all_sections() {
+        let input = "\
+|||TITLE|||
+Translated Title
+|||END_TITLE|||
+
+|||CONTENT|||
+First paragraph.
+
+Second paragraph.
+|||END_CONTENT|||
+
+|||SUMMARY|||
+A short summary.
+|||END_SUMMARY|||";
+        let result = parse_llm_output(input).unwrap();
+        assert_eq!(result.title.as_deref(), Some("Translated Title"));
+        assert_eq!(
+            result.content.as_deref(),
+            Some("First paragraph.\n\nSecond paragraph.")
+        );
+        assert_eq!(result.summary.as_deref(), Some("A short summary."));
+    }
+
+    #[test]
+    fn parse_title_and_content_only() {
+        let input = "\
+|||TITLE|||
+Just a Title
+|||END_TITLE|||
+
+|||CONTENT|||
+Just content.
+|||END_CONTENT|||";
+        let result = parse_llm_output(input).unwrap();
+        assert_eq!(result.title.as_deref(), Some("Just a Title"));
+        assert_eq!(result.content.as_deref(), Some("Just content."));
+        assert!(result.summary.is_none());
+    }
+
+    #[test]
+    fn missing_title_and_content_is_error() {
+        let input = "\
+|||SUMMARY|||
+A summary only.
+|||END_SUMMARY|||";
+        assert!(parse_llm_output(input).is_err());
+    }
+
+    #[test]
+    fn empty_input_is_error() {
+        assert!(parse_llm_output("").is_err());
+    }
+
+    #[test]
+    fn multiline_content() {
+        let input = "\
+|||TITLE|||
+T
+|||END_TITLE|||
+
+|||CONTENT|||
+Line 1
+Line 2
+Line 3
+|||END_CONTENT|||";
+        let result = parse_llm_output(input).unwrap();
+        assert_eq!(result.content.as_deref(), Some("Line 1\nLine 2\nLine 3"));
+    }
+
+    #[test]
+    fn whitespace_is_trimmed() {
+        let input = "\
+|||TITLE|||
+  Padded Title
+|||END_TITLE|||
+
+|||CONTENT|||
+  Padded content.
+|||END_CONTENT|||";
+        let result = parse_llm_output(input).unwrap();
+        assert_eq!(result.title.as_deref(), Some("Padded Title"));
+        assert_eq!(result.content.as_deref(), Some("Padded content."));
+    }
+
+    #[test]
+    fn leading_junk_before_tags_is_ignored() {
+        let input = "\
+Here is the translation:
+
+|||TITLE|||
+Real Title
+|||END_TITLE|||
+
+|||CONTENT|||
+Real content.
+|||END_CONTENT|||";
+        let result = parse_llm_output(input).unwrap();
+        assert_eq!(result.title.as_deref(), Some("Real Title"));
+        assert_eq!(result.content.as_deref(), Some("Real content."));
+    }
+
+    #[test]
+    fn html_tags_preserved_in_content() {
+        let input = "\
+|||TITLE|||
+T
+|||END_TITLE|||
+
+|||CONTENT|||
+<p>Hello <b>world</b></p>
+|||END_CONTENT|||";
+        let result = parse_llm_output(input).unwrap();
+        assert_eq!(result.content.as_deref(), Some("<p>Hello <b>world</b></p>"));
+    }
+
+    #[test]
+    fn out_of_order_sections() {
+        let input = "\
+|||SUMMARY|||
+Sum.
+|||END_SUMMARY|||
+
+|||CONTENT|||
+Body.
+|||END_CONTENT|||
+
+|||TITLE|||
+Title.
+|||END_TITLE|||";
+        let result = parse_llm_output(input).unwrap();
+        assert_eq!(result.title.as_deref(), Some("Title."));
+        assert_eq!(result.content.as_deref(), Some("Body."));
+        assert_eq!(result.summary.as_deref(), Some("Sum."));
+    }
+
+    #[test]
+    fn content_only_is_valid() {
+        let input = "\
+|||CONTENT|||
+Just content, no title tag.
+|||END_CONTENT|||";
+        let result = parse_llm_output(input).unwrap();
+        assert!(result.title.is_none());
+        assert_eq!(
+            result.content.as_deref(),
+            Some("Just content, no title tag.")
+        );
+    }
+}

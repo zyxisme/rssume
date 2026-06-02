@@ -7,6 +7,12 @@ use std::sync::Arc;
 use tokio::sync::{RwLock, Semaphore};
 use uuid::Uuid;
 
+#[derive(Clone, Copy)]
+struct RetryConfig {
+    max_retries: u32,
+    delay_secs: u64,
+}
+
 #[derive(Clone)]
 pub struct Scheduler {
     config: Arc<RwLock<Config>>,
@@ -108,6 +114,10 @@ impl Scheduler {
 
         let tc = config.llm.translation.clone();
         let target = config.language.target.clone();
+        let retry = RetryConfig {
+            max_retries: config.llm.max_retries,
+            delay_secs: config.llm.retry_delay_secs,
+        };
         let semaphore = self.semaphore.clone();
         let monitor = self.monitor.clone();
         let feed_name_owned = feed_name.to_string();
@@ -133,6 +143,7 @@ impl Scheduler {
                         &target,
                         semaphore,
                         monitor.clone(),
+                        retry,
                     )
                     .await;
                     (feed_name, title, link, published_at, guid, result)
@@ -256,6 +267,7 @@ async fn process_single_article(
     target: &str,
     semaphore: Arc<Semaphore>,
     monitor: Arc<RwLock<Monitor>>,
+    retry: RetryConfig,
 ) -> Result<Article, crate::error::AppError> {
     let title = raw.title.clone();
     monitor.write().await.start_article(feed_name, &title, 1);
@@ -303,8 +315,8 @@ async fn process_single_article(
     let _permit = semaphore.acquire().await.unwrap();
 
     let mut retry_ctx = RetryContext::new(
-        2,
-        1,
+        retry.max_retries,
+        retry.delay_secs,
         feed_name.to_string(),
         raw.title.clone(),
         model.clone(),

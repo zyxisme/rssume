@@ -62,10 +62,18 @@ pub struct FeedConfig {
     pub max_articles: usize,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct LogConfig {
     #[serde(default = "default_log_level")]
     pub level: String,
+}
+
+impl Default for LogConfig {
+    fn default() -> Self {
+        Self {
+            level: default_log_level(),
+        }
+    }
 }
 
 fn default_host() -> String {
@@ -188,4 +196,99 @@ max_articles = 25
 level = "info"
 "#
     .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deserialize_with_defaults() {
+        let toml = r#"
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[language]
+target = "en"
+
+[llm]
+[llm.translation]
+provider = "openai"
+model = "gpt-4o"
+api_key = "sk-test"
+
+[llm.summary]
+provider = "openai"
+model = "gpt-4o"
+api_key = "sk-test"
+
+[[feeds]]
+name = "test-feed"
+url = "https://example.com/feed.xml"
+"#;
+        let config: Config = toml::from_str(toml).unwrap();
+
+        assert_eq!(config.server.host, "0.0.0.0");
+        assert_eq!(config.server.port, 8080);
+        assert_eq!(config.language.target, "en");
+
+        // LLM defaults
+        assert_eq!(config.llm.max_concurrent_requests, 3);
+        assert_eq!(config.llm.max_retries, 2);
+        assert_eq!(config.llm.retry_delay_secs, 1);
+
+        // LLM provider defaults
+        assert_eq!(config.llm.translation.base_url, "https://api.openai.com/v1");
+        assert!(config.llm.translation.prompt_append.is_none());
+        assert!(config.llm.translation.max_tokens.is_none());
+        assert_eq!(config.llm.summary.base_url, "https://api.openai.com/v1");
+        assert!(config.llm.summary.prompt_append.is_none());
+        assert!(config.llm.summary.max_tokens.is_none());
+
+        // Feed defaults
+        assert_eq!(config.feeds.len(), 1);
+        assert!(config.feeds[0].enabled);
+        assert_eq!(config.feeds[0].interval_secs, 300);
+        assert_eq!(config.feeds[0].max_articles, 25);
+
+        // Logging defaults (entire section missing)
+        assert_eq!(config.logging.level, "info");
+    }
+
+    #[test]
+    fn default_config_toml_round_trip() {
+        let toml_str = default_config_toml();
+        let config: Config = toml::from_str(&toml_str).unwrap();
+
+        // Verify the round-tripped config has expected values
+        assert_eq!(config.server.host, "127.0.0.1");
+        assert_eq!(config.server.port, 3000);
+        assert_eq!(config.language.target, "zh_CN");
+        assert_eq!(config.llm.max_concurrent_requests, 3);
+        assert_eq!(config.llm.max_retries, 2);
+        assert_eq!(config.llm.retry_delay_secs, 1);
+        assert_eq!(config.llm.translation.provider, "openai");
+        assert_eq!(config.llm.translation.model, "gpt-4o-mini");
+        assert_eq!(config.llm.translation.base_url, "https://api.openai.com/v1");
+        assert_eq!(config.llm.summary.provider, "openai");
+        assert_eq!(config.llm.summary.model, "gpt-4o-mini");
+        assert_eq!(config.feeds.len(), 2);
+        assert_eq!(config.feeds[0].name, "hacker-news");
+        assert_eq!(config.feeds[1].name, "rust-blog");
+        assert_eq!(config.logging.level, "info");
+
+        // Verify re-serialization produces a valid TOML that parses back identically
+        let reserialized = toml::to_string(&config).unwrap();
+        let config2: Config = toml::from_str(&reserialized).unwrap();
+        assert_eq!(config.server.host, config2.server.host);
+        assert_eq!(config.server.port, config2.server.port);
+        assert_eq!(config.language.target, config2.language.target);
+        assert_eq!(
+            config.llm.max_concurrent_requests,
+            config2.llm.max_concurrent_requests
+        );
+        assert_eq!(config.feeds.len(), config2.feeds.len());
+        assert_eq!(config.logging.level, config2.logging.level);
+    }
 }
