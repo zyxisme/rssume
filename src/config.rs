@@ -31,6 +31,10 @@ pub struct LlmConfig {
     pub summary: LlmProviderConfig,
     #[serde(default = "default_max_concurrent_requests")]
     pub max_concurrent_requests: usize,
+    #[serde(default = "default_max_retries")]
+    pub max_retries: u32,
+    #[serde(default = "default_retry_delay_secs")]
+    pub retry_delay_secs: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -91,6 +95,12 @@ fn default_max_concurrent_requests() -> usize {
 fn default_max_articles() -> usize {
     25
 }
+fn default_max_retries() -> u32 {
+    2
+}
+fn default_retry_delay_secs() -> u64 {
+    1
+}
 
 impl Config {
     pub fn load() -> Result<Self, crate::error::AppError> {
@@ -144,6 +154,8 @@ target = "zh_CN"
 
 [llm]
 max_concurrent_requests = 3
+max_retries = 2
+retry_delay_secs = 1
 
 [llm.translation]
 provider = "openai"
