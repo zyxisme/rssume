@@ -94,7 +94,17 @@ impl Article {
         article_id: &str,
     ) -> Result<Self, crate::error::AppError> {
         let path = article_path(feed_name, article_id);
-        let content = std::fs::read_to_string(&path)?;
+        // Fallback: try raw article_id as filename for backward compatibility with
+        // data created on systems where the raw URL is a valid filename.
+        let content = match std::fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(_) => {
+                let raw_path = feed_dir(feed_name)
+                    .join("articles")
+                    .join(format!("{}.toml", article_id));
+                std::fs::read_to_string(&raw_path)?
+            }
+        };
         toml::from_str(&content)
             .map_err(|e| crate::error::AppError::Storage(format!("parse article TOML: {}", e)))
     }
@@ -171,10 +181,25 @@ fn meta_path(feed_name: &str) -> PathBuf {
     feed_dir(feed_name).join("meta.toml")
 }
 
+/// Convert an article ID (typically a URL) into a safe filename by percent-encoding
+/// characters that are invalid in Windows file paths.
+fn sanitize_filename(id: &str) -> String {
+    let mut result = String::with_capacity(id.len());
+    for c in id.chars() {
+        match c {
+            ':' | '/' | '\\' | '?' | '*' | '<' | '>' | '|' | '"' => {
+                result.push_str(&format!("%{:02X}", c as u32));
+            }
+            _ => result.push(c),
+        }
+    }
+    result
+}
+
 fn article_path(feed_name: &str, article_id: &str) -> PathBuf {
     feed_dir(feed_name)
         .join("articles")
-        .join(format!("{}.toml", article_id))
+        .join(format!("{}.toml", sanitize_filename(article_id)))
 }
 
 fn data_path(feed_name: &str) -> PathBuf {
