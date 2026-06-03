@@ -108,6 +108,8 @@ cargo build --release
 - Single binary, zero external dependencies at runtime
 - Templates embedded via `include_str!()` + `tera.add_raw_template()` at compile time
 - Config auto-created on first run if missing (`~/.config/rssume/config.toml`)
+- **Static assets**: embed via `include_str!()` and serve through dedicated endpoints (e.g., `/feeds/style.xsl` for XSLT)
+- **XSLT pattern**: use `<?xml-stylesheet?>` processing instruction in XML endpoints for browser-friendly rendering
 
 ## Code Conventions
 
@@ -118,6 +120,7 @@ cargo build --release
 - Single binary: no separate server/worker processes
 - **Shared state**: `Arc<RwLock<Monitor>>` in `AppState { config, monitor }`, passed to scheduler + web
 - **axum 0.8 state**: uses `Extension<Arc<AppState>>` (not `State`) for routers needing shared access
+- **Static asset routes**: define static routes (e.g., `/feeds/style.xsl`) before parameterized routes (e.g., `/feeds/{name}`) to avoid conflicts
 - **LLM streaming**: `resp.bytes_stream()` with SSE parsing, 60s idle timeout per chunk
 - **Article compat**: new fields use `#[serde(default)]` so existing TOML data deserializes fine
 - **Templates**: `include_str!()` at compile time + `tera.add_raw_template()` in `tera_instance()`
