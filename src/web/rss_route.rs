@@ -47,7 +47,7 @@ async fn serve_feed(
         axum::http::StatusCode::OK,
         [(
             "Content-Type".to_string(),
-            "application/rss+xml; charset=utf-8".to_string(),
+            "text/xml; charset=utf-8".to_string(),
         )],
         rss_xml,
     ))
