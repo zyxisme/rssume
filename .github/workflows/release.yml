@@ -13,7 +13,9 @@ jobs:
       matrix:
         target:
           - os: ubuntu-latest
-            triple: x86_64-unknown-linux-gnu
+            triple: x86_64-unknown-linux-musl
+          - os: ubuntu-latest
+            triple: aarch64-unknown-linux-musl
           - os: macos-latest
             triple: x86_64-apple-darwin
           - os: macos-latest
@@ -27,6 +29,22 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target.triple }}
+
+      - name: Install musl tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Install aarch64 musl toolchain
+        if: matrix.target.triple == 'aarch64-unknown-linux-musl'
+        run: |
+          curl -sSL https://github.com/musl-cross/musl-cross-make/releases/download/v0.9.9/musl-cross-make-x86_64-linux-musl.tar.xz | tar -xJ -C /tmp
+          echo "/tmp/cross/bin" >> $GITHUB_PATH
+
+      - name: Set cross-compile env
+        if: matrix.target.triple == 'aarch64-unknown-linux-musl'
+        run: |
+          echo "CC_aarch64_unknown_linux_musl=aarch64-linux-musl-gcc" >> $GITHUB_ENV
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc" >> $GITHUB_ENV
 
       - uses: Swatinem/rust-cache@v2
 
