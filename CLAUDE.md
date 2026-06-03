@@ -95,8 +95,9 @@ cargo build --release
 
 ## CI
 
-- Push/PR CI (`.github/workflows/ci.yml`): fmt → clippy → test(3os) + build(4 targets), Windows uses debug profile for speed
-- Release CI (`.github/workflows/release.yml`): triggered by `v*` tags, builds 4 targets, publishes via `softprops/action-gh-release`
+- Push/PR CI (`.github/workflows/ci.yml`): fmt → clippy → test(3os) + build(5 targets), Windows uses debug profile for speed
+- Release CI (`.github/workflows/release.yml`): triggered by `v*` tags, builds 5 targets, publishes via `softprops/action-gh-release`
+- Linux targets use `x86_64-unknown-linux-musl` and `aarch64-unknown-linux-musl` for fully static binaries
 - `RUSTFLAGS: -Dwarnings` in CI — all warnings are fatal
 - **Do not run local builds** — commit → push → check CI via API: `curl -s "https://api.github.com/repos/zyxisme/rssume/commits/<sha>/check-runs"`
 - CI runners are faster and more reliable than local builds
@@ -136,4 +137,4 @@ cargo build --release
 
 - Default version bump: `0.0.1` unless user specifies otherwise
 - Pre-publish: version bump → commit Cargo.toml + Cargo.lock → push to CI → wait for CI pass → `cargo publish` → push tag. Publish on a clean tree, don't use `--allow-dirty`.
-- Release CI triggers on `v*` tag push, builds 4 targets, uploads to GitHub Releases
+- Release CI triggers on `v*` tag push, builds 5 targets, uploads to GitHub Releases
