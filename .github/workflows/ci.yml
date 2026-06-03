@@ -36,7 +36,7 @@ jobs:
       matrix:
         target:
           - os: ubuntu-latest
-            triple: x86_64-unknown-linux-gnu
+            triple: x86_64-unknown-linux-musl
             profile: release
           - os: macos-latest
             triple: aarch64-apple-darwin
@@ -50,6 +50,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target.triple }}
+      - name: Install musl tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ runner.os }}
