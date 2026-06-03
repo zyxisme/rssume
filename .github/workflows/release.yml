@@ -37,8 +37,8 @@ jobs:
       - name: Install aarch64 musl toolchain
         if: matrix.target.triple == 'aarch64-unknown-linux-musl'
         run: |
-          curl -sSL https://github.com/musl-cross/musl-cross-make/releases/download/v0.9.9/musl-cross-make-x86_64-linux-musl.tar.xz | tar -xJ -C /tmp
-          echo "/tmp/cross/bin" >> $GITHUB_PATH
+          curl -sSL https://github.com/cross-tools/musl-cross/releases/latest/download/aarch64-unknown-linux-musl.tar.xz | tar -xJ -C /tmp
+          echo "/tmp/aarch64-unknown-linux-musl/bin" >> $GITHUB_PATH
 
       - name: Set cross-compile env
         if: matrix.target.triple == 'aarch64-unknown-linux-musl'
