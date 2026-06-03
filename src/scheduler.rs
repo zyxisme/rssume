@@ -148,6 +148,7 @@ impl Scheduler {
                 let link = raw.link.clone();
                 let published_at = raw.published_at.clone();
                 let guid = raw.guid.clone();
+                let raw_content = raw.content.clone();
                 tokio::spawn(async move {
                     let result = process_single_article(
                         &feed_name,
@@ -159,7 +160,7 @@ impl Scheduler {
                         retry,
                     )
                     .await;
-                    (feed_name, title, link, published_at, guid, result)
+                    (feed_name, title, link, published_at, guid, raw_content, result)
                 })
             })
             .collect();
@@ -170,7 +171,7 @@ impl Scheduler {
 
         for handle in handles {
             match handle.await {
-                Ok((feed_name, title, _link, _published_at, _guid, Ok(article))) => {
+                Ok((feed_name, title, _link, _published_at, _guid, _raw_content, Ok(article))) => {
                     if article.translated {
                         translated_count += 1;
                     }
@@ -193,7 +194,7 @@ impl Scheduler {
                     }
                     monitor.write().await.complete_article(&feed_name, &title);
                 }
-                Ok((feed_name, title, link, published_at, guid, Err(e))) => {
+                Ok((feed_name, title, link, published_at, guid, raw_content, Err(e))) => {
                     failed_count += 1;
                     tracing::error!(
                         feed = feed_name,
@@ -208,8 +209,8 @@ impl Scheduler {
                         title: title.clone(),
                         original_title: title.clone(),
                         link,
-                        content: String::new(),
-                        original_content: String::new(),
+                        content: raw_content.clone(),
+                        original_content: raw_content,
                         summary: None,
                         translated: false,
                         translated_title: false,

@@ -171,14 +171,11 @@ pub async fn chat_stream(
     }
 
     if finish_reason.as_deref() == Some("length") {
-        tracing::error!(
+        tracing::warn!(
             text_len = full_text.len(),
             max_tokens = config.max_tokens,
-            "LLM response truncated: max_tokens limit reached"
+            "LLM response truncated: max_tokens limit reached — using partial result"
         );
-        return Err(crate::error::AppError::Llm(
-            "translation truncated: max_tokens limit reached".into(),
-        ));
     }
 
     let usage = usage.unwrap_or(UsageInfo {
