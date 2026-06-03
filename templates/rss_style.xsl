@@ -451,7 +451,7 @@
               var lineNums = document.createElement('div');
               lineNums.className = 'line-numbers';
               var numHtml = '';
-              for (var i = 1; i <= lines.length; i++) {
+              for (var i = 1; i &lt;= lines.length; i++) {
                 numHtml += i + '\n';
               }
               lineNums.textContent = numHtml;
