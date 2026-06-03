@@ -160,7 +160,15 @@ impl Scheduler {
                         retry,
                     )
                     .await;
-                    (feed_name, title, link, published_at, guid, raw_content, result)
+                    (
+                        feed_name,
+                        title,
+                        link,
+                        published_at,
+                        guid,
+                        raw_content,
+                        result,
+                    )
                 })
             })
             .collect();
