@@ -6,6 +6,8 @@ pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
     let mut xml = String::new();
     xml.push_str(r#"<?xml version="1.0" encoding="UTF-8"?>"#);
     xml.push('\n');
+    xml.push_str(r#"<?xml-stylesheet type="text/xsl" href="/feeds/style.xsl"?>"#);
+    xml.push('\n');
     xml.push_str(concat!(
         r#"<rss version="2.0""#,
         r#" xmlns:atom="http://www.w3.org/2005/Atom""#,
