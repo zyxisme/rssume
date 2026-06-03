@@ -4,7 +4,7 @@
 <h1>Live Monitor</h1>
 <p class="subtitle">Real-time translation progress and feed status</p>
 
-<div hx-get="/api/monitor/translating" hx-trigger="every 2s" hx-target="#monitor-content" hx-swap="innerHTML" hx-on:after-swap="document.querySelectorAll('.stream-text').forEach(el => { if (el.scrollHeight - el.scrollTop - el.clientHeight < 50) el.scrollTop = el.scrollHeight })" aria-hidden="true"></div>
+<div hx-get="/api/monitor/translating" hx-trigger="every 100ms" hx-target="#monitor-content" hx-swap="innerHTML" hx-on:after-swap="document.querySelectorAll('.stream-text').forEach(el => { if (el.scrollHeight - el.scrollTop - el.clientHeight < 50) el.scrollTop = el.scrollHeight })" aria-hidden="true"></div>
 <div id="monitor-content">
     {% include "partials/monitor_status.html" %}
 </div>

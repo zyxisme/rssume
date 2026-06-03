@@ -78,17 +78,6 @@ async fn list_feeds(Extension(s): Extension<Arc<AppState>>) -> Json<Vec<FeedInfo
     )
 }
 
-fn tail_lines(text: &str, n: usize) -> String {
-    text.lines()
-        .rev()
-        .take(n)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
 fn base_url_from_headers(headers: &axum::http::HeaderMap, cfg: &crate::config::Config) -> String {
     if let (Some(proto), Some(host)) = (
         headers
@@ -204,7 +193,7 @@ async fn monitor_translating(
                 "article_title": l.article_title,
                 "stage": format!("{:?}", l.stage),
                 "streamed_text": match &l.status {
-                    crate::monitor::LogStatus::Streaming { tokens } => tail_lines(tokens, 5),
+                    crate::monitor::LogStatus::Streaming { tokens } => tokens.clone(),
                     _ => String::new(),
                 },
             })
@@ -265,7 +254,7 @@ async fn monitor_feed_translating(
                         "stage": format!("{:?}", l.stage),
                         "model": l.model,
                         "streamed_text": match &l.status {
-                            LogStatus::Streaming { tokens } => tail_lines(tokens, 5),
+                            LogStatus::Streaming { tokens } => tokens.clone(),
                             _ => String::new(),
                         },
                     })
