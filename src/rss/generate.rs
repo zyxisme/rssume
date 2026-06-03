@@ -49,12 +49,6 @@ pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
         xml.push_str(&format!("      <description>{}</description>\n", desc));
 
         xml.push_str("      <content:encoded><![CDATA[");
-        if let Some(ref s) = article.summary {
-            xml.push_str(&format!(
-                "<p><strong>[AI 摘要]</strong> {}</p><hr/>",
-                esc(s)
-            ));
-        }
         xml.push_str(&article.content);
         if article.translated {
             let model = article.translation_model.as_deref().unwrap_or("unknown");
