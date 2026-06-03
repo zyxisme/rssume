@@ -68,10 +68,10 @@ Design system: Vercel-inspired (see DESIGN.md)
 - **htmx auto-scroll**: use `hx-on:after-swap` on the trigger div. For streaming text, add
   scroll-stickiness guard: `if (el.scrollHeight - el.scrollTop - el.clientHeight < 50)` before
   setting `scrollTop = scrollHeight`, so users can scroll up without being yanked back.
-- **htmx streaming tail**: for continuously growing text (e.g., LLM token stream), truncate at
-  the API layer to the latest N lines (`tail_lines(text, n)`) instead of relying on CSS overflow
-  + auto-scroll. Remove `max-height`/`overflow-y` from the template — truncated content doesn't
-  need a scrollable container.
+- **htmx streaming tail**: for continuously growing text (e.g., LLM token stream), send full text
+  from the API. Client-side: `white-space:pre; overflow-x:hidden; overflow-y:auto; max-height:200px`
+  clips long lines at container width and scrolls vertically. The `hx-on:after-swap` auto-scroll
+  handler keeps the view pinned to the latest content.
 
 ## LLM Integration
 
@@ -111,6 +111,14 @@ cargo build --release
 - **Static assets**: embed via `include_str!()` and serve through dedicated endpoints (e.g., `/feeds/style.xsl` for XSLT)
 - **XSLT pattern**: use `<?xml-stylesheet?>` processing instruction in XML endpoints for browser-friendly rendering
 - **RSS Content-Type**: use `text/xml` (not `application/rss+xml`) — Chrome does not apply XSLT to `application/rss+xml`
+
+## RSS Preview Page (XSL)
+
+- **Content rendering**: `rss_style.xsl` uses `<xsl:value-of select="content:encoded" disable-output-escaping="yes"/>` to render HTML
+- **Code block enhancements**: client-side JS wraps `<pre><code>` after `hljs.highlightElement()` — adds line numbers, language badge, copy button
+- **XSL DOM manipulation**: use `DOMContentLoaded` listener; clone nodes with `cloneNode(true)` before replacing originals
+- **Code block CSS**: `.code-body` uses `display:flex; overflow-x:auto`, `.line-numbers` has `flex-shrink:0; white-space:pre`
+- **Clipboard pattern**: `navigator.clipboard.writeText()` → toggle button text/class → `setTimeout` reset after 2s
 
 ## Code Conventions
 

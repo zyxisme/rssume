@@ -211,6 +211,82 @@
             border-radius: var(--rounded-sm);
           }
 
+          /* Code block enhancements */
+          .code-block {
+            position: relative;
+            margin: 16px 0;
+            border-radius: var(--rounded-md);
+            overflow: hidden;
+            background: var(--canvas-soft);
+          }
+
+          .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: var(--canvas-soft-2);
+            border-bottom: 1px solid var(--hairline);
+            font-size: 12px;
+            color: var(--mute);
+          }
+
+          .code-lang {
+            font-family: var(--font-mono);
+            text-transform: lowercase;
+          }
+
+          .code-copy {
+            background: none;
+            border: 1px solid var(--hairline);
+            border-radius: var(--rounded-sm);
+            padding: 4px 12px;
+            font-size: 12px;
+            font-family: var(--font-sans);
+            color: var(--mute);
+            cursor: pointer;
+            transition: all 0.15s;
+          }
+
+          .code-copy:hover {
+            color: var(--ink);
+            border-color: var(--hairline-strong);
+            background: var(--canvas);
+          }
+
+          .code-copy.copied {
+            color: var(--success);
+            border-color: var(--success);
+          }
+
+          .code-body {
+            display: flex;
+            overflow-x: auto;
+          }
+
+          .line-numbers {
+            flex-shrink: 0;
+            padding: 16px 0;
+            padding-left: 16px;
+            padding-right: 12px;
+            text-align: right;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre;
+            color: var(--hairline-strong);
+            user-select: none;
+            border-right: 1px solid var(--hairline);
+            background: var(--canvas-soft-2);
+          }
+
+          .code-body pre {
+            margin: 0;
+            padding: 16px;
+            background: transparent;
+            white-space: pre;
+          }
+
           /* highlight.js style overrides for Vercel design */
           .hljs {
             background: transparent !important;
@@ -336,6 +412,57 @@
           document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.content pre code').forEach(function(block) {
               hljs.highlightElement(block);
+
+              var pre = block.parentElement;
+              var lang = (block.className.match(/language-(\w+)/) || block.className.match(/hljs (\w+)/) || [])[1] || 'code';
+              var lines = block.textContent.split('\n');
+              if (lines[lines.length - 1] === '') lines.pop();
+
+              var wrapper = document.createElement('div');
+              wrapper.className = 'code-block';
+
+              var header = document.createElement('div');
+              header.className = 'code-header';
+
+              var langSpan = document.createElement('span');
+              langSpan.className = 'code-lang';
+              langSpan.textContent = lang;
+
+              var copyBtn = document.createElement('button');
+              copyBtn.className = 'code-copy';
+              copyBtn.textContent = 'Copy';
+              copyBtn.onclick = function() {
+                navigator.clipboard.writeText(block.textContent).then(function() {
+                  copyBtn.textContent = 'Copied!';
+                  copyBtn.classList.add('copied');
+                  setTimeout(function() {
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.classList.remove('copied');
+                  }, 2000);
+                });
+              };
+
+              header.appendChild(langSpan);
+              header.appendChild(copyBtn);
+
+              var body = document.createElement('div');
+              body.className = 'code-body';
+
+              var lineNums = document.createElement('div');
+              lineNums.className = 'line-numbers';
+              var numHtml = '';
+              for (var i = 1; i <= lines.length; i++) {
+                numHtml += i + '\n';
+              }
+              lineNums.textContent = numHtml;
+
+              body.appendChild(lineNums);
+              body.appendChild(pre.cloneNode(true));
+
+              wrapper.appendChild(header);
+              wrapper.appendChild(body);
+
+              pre.parentNode.replaceChild(wrapper, pre);
             });
           });
         </script>
