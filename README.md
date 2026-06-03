@@ -22,6 +22,7 @@
 - **并发处理** — 可配置最大并发请求数，高效处理多篇文章
 - **RSS 增强导出** — content:encoded、dc:creator、category、enclosure 等扩展字段，兼容所有主流 RSS 阅读器
 - **OPML 导出** — 一键导出所有订阅源为 OPML 格式，方便迁移到其他阅读器
+- **RSS 可读页面** — 浏览器直接访问 RSS 地址即可阅读，XSLT 样式表渲染为美观的 HTML 页面
 - **Web 控制台** — 订阅源管理、文章浏览、统计数据、服务控制
 - **实时翻译监控** — `/panel/monitor` 实时展示翻译进度、LLM token 流输出、历史日志
 - **Token 用量统计** — 按模型和订阅源统计 token 消耗，持久化保存
@@ -102,7 +103,8 @@ max_articles = 25  # 每次拉取最大文章数
 
 | 端点 | 说明 |
 |------|------|
-| `GET /feeds/:name` | RSS 订阅地址 |
+| `GET /feeds/:name` | RSS 订阅地址（浏览器访问显示可读页面） |
+| `GET /feeds/style.xsl` | XSLT 样式表 |
 | `GET /api/stats` | 统计数据（JSON） |
 | `GET /api/feeds` | 订阅源列表（JSON） |
 | `GET /api/feeds/export.opml` | OPML 导出 |
