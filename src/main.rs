@@ -15,10 +15,13 @@ use tokio::sync::RwLock;
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
+        .compact()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
+        .with_target(false)
+        .with_thread_ids(true)
         .init();
 
     let config = match config::Config::load() {

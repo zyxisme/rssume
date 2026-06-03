@@ -34,7 +34,7 @@ impl Scheduler {
     }
 
     pub async fn process_feed(&self, feed_name: &str, feed_url: &str) {
-        tracing::info!("Processing feed: {} ({})", feed_name, feed_url);
+        tracing::info!(feed = feed_name, url = feed_url, "processing");
         let start = std::time::Instant::now();
         self.monitor.write().await.ensure_feed(feed_name);
         self.monitor
@@ -46,7 +46,7 @@ impl Scheduler {
             Ok(a) => a,
             Err(e) => {
                 let ms = start.elapsed().as_millis() as u64;
-                tracing::error!("Fetch failed '{}': {}", feed_name, e);
+                tracing::error!(feed = feed_name, "fetch failed: {}", e);
                 self.monitor
                     .write()
                     .await
@@ -54,6 +54,12 @@ impl Scheduler {
                 return;
             }
         };
+
+        tracing::info!(
+            feed = feed_name,
+            fetched = raw_articles.len(),
+            "fetched articles"
+        );
 
         let max_articles = {
             let cfg = self.config.read().await;
@@ -74,7 +80,7 @@ impl Scheduler {
         let feed_data = match FeedData::load(feed_name) {
             Ok(d) => d,
             Err(e) => {
-                tracing::error!("Load failed: {}", e);
+                tracing::error!(feed = feed_name, "load failed: {}", e);
                 return;
             }
         };
@@ -86,6 +92,7 @@ impl Scheduler {
             .collect();
 
         if new_articles.is_empty() {
+            tracing::info!(feed = feed_name, "no new articles");
             self.monitor
                 .write()
                 .await
@@ -93,10 +100,16 @@ impl Scheduler {
             return;
         }
 
+        tracing::info!(
+            feed = feed_name,
+            new = new_articles.len(),
+            "new articles to process"
+        );
+
         let mut feed_meta = match FeedMeta::load(feed_name) {
             Ok(m) => m,
             Err(e) => {
-                tracing::error!("Load meta failed '{}': {}", feed_name, e);
+                tracing::error!(feed = feed_name, "meta load failed: {}", e);
                 return;
             }
         };
@@ -151,22 +164,43 @@ impl Scheduler {
             })
             .collect();
 
+        let mut translated_count: u32 = 0;
+        let mut failed_count: u32 = 0;
+        let mut total_tokens: u32 = 0;
+
         for handle in handles {
             match handle.await {
                 Ok((feed_name, title, _link, _published_at, _guid, Ok(article))) => {
+                    if article.translated {
+                        translated_count += 1;
+                    }
+                    if let Some(tokens) = article.translation_tokens {
+                        total_tokens += tokens;
+                    }
                     if let Err(e) = article.save_to_file(&feed_name) {
-                        tracing::error!("Failed to save article '{}': {}", title, e);
+                        tracing::error!(
+                            feed = feed_name,
+                            article = title.as_str(),
+                            "save failed: {}",
+                            e
+                        );
                         monitor.write().await.complete_article(&feed_name, &title);
                         continue;
                     }
                     feed_meta.add_article(&article.id, &article.published_at);
                     if let Err(e) = feed_meta.save(&feed_name) {
-                        tracing::error!("Failed to save feed meta '{}': {}", feed_name, e);
+                        tracing::error!(feed = feed_name, "meta save failed: {}", e);
                     }
                     monitor.write().await.complete_article(&feed_name, &title);
                 }
                 Ok((feed_name, title, link, published_at, guid, Err(e))) => {
-                    tracing::error!("Article processing failed '{}': {}", title, e);
+                    failed_count += 1;
+                    tracing::error!(
+                        feed = feed_name,
+                        article = title.as_str(),
+                        "processing failed: {}",
+                        e
+                    );
                     // Save raw article to avoid reprocessing
                     let article = Article {
                         id: guid.unwrap_or_else(|| Uuid::new_v4().to_string()),
@@ -190,25 +224,36 @@ impl Scheduler {
                         enclosure: None,
                     };
                     if let Err(e) = article.save_to_file(&feed_name) {
-                        tracing::error!("Failed to save failed article '{}': {}", title, e);
+                        tracing::error!(
+                            feed = feed_name.as_str(),
+                            article = title.as_str(),
+                            "save failed: {}",
+                            e
+                        );
                     }
                     feed_meta.add_article(&article.id, &article.published_at);
                     monitor.write().await.complete_article(&feed_name, &title);
                 }
                 Err(e) => {
-                    tracing::error!("Task join error: {}", e);
+                    tracing::error!("task join error: {}", e);
                 }
             }
         }
 
         if let Err(e) = feed_meta.save(feed_name) {
-            tracing::error!("Failed to save feed meta '{}': {}", feed_name, e);
+            tracing::error!(feed = feed_name, "meta save failed: {}", e);
         }
 
+        let elapsed_ms = start.elapsed().as_millis() as u64;
         tracing::info!(
-            "Feed '{}' processed: {} total",
-            feed_name,
-            feed_meta.article_ids.len()
+            feed = feed_name,
+            total = feed_meta.article_ids.len(),
+            new = total,
+            translated = translated_count,
+            failed = failed_count,
+            tokens = total_tokens,
+            elapsed_ms = elapsed_ms,
+            "feed processed"
         );
         self.monitor
             .write()
@@ -238,7 +283,7 @@ impl Scheduler {
 
         for handle in handles {
             if let Err(e) = handle.await {
-                tracing::error!("Feed task join error: {}", e);
+                tracing::error!("feed task join error: {}", e);
             }
         }
     }
