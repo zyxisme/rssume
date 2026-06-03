@@ -2,10 +2,24 @@ use super::api::AppState;
 use axum::{Extension, Router, routing::get};
 use std::sync::Arc;
 
+const RSS_STYLE_XSL: &str = include_str!("../../templates/rss_style.xsl");
+
 pub fn router(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/feeds/{name}", get(serve_feed))
+        .route("/feeds/style.xsl", get(serve_style))
         .layer(Extension(state))
+}
+
+async fn serve_style() -> (axum::http::StatusCode, [(String, String); 1], String) {
+    (
+        axum::http::StatusCode::OK,
+        [(
+            "Content-Type".to_string(),
+            "application/xslt+xml; charset=utf-8".to_string(),
+        )],
+        RSS_STYLE_XSL.to_string(),
+    )
 }
 
 async fn serve_feed(
