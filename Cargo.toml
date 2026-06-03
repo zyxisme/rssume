@@ -1,6 +1,6 @@
 [package]
 name = "rssume"
-version = "0.3.5"
+version = "0.3.6"
 edition = "2024"
 description = "RSS middleware with AI-powered translation and summarization"
 license = "MIT"
