@@ -12,7 +12,24 @@
         <meta charset="UTF-8"/>
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
         <title><xsl:value-of select="rss/channel/title"/> - rssume</title>
+        <link rel="stylesheet" href="/feeds/assets/highlight.min.css"/>
         <style>
+          @font-face {
+            font-family: "JetBrains Mono";
+            src: url("/feeds/assets/jetbrains-mono-regular.woff2") format("woff2");
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+          }
+
+          @font-face {
+            font-family: "JetBrains Mono";
+            src: url("/feeds/assets/jetbrains-mono-bold.woff2") format("woff2");
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+          }
+
           :root {
             --canvas: #ffffff;
             --canvas-soft: #fafafa;
@@ -177,6 +194,13 @@
             overflow-x: auto;
             font-family: var(--font-mono);
             font-size: 14px;
+            line-height: 1.6;
+          }
+
+          .content pre code {
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
           }
 
           .content code {
@@ -185,6 +209,12 @@
             background: var(--canvas-soft);
             padding: 2px 6px;
             border-radius: var(--rounded-sm);
+          }
+
+          /* highlight.js style overrides for Vercel design */
+          .hljs {
+            background: transparent !important;
+            padding: 0 !important;
           }
 
           .translation-info {
@@ -301,6 +331,14 @@
             </xsl:otherwise>
           </xsl:choose>
         </main>
+        <script src="/feeds/assets/highlight.min.js"></script>
+        <script>
+          document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.content pre code').forEach(function(block) {
+              hljs.highlightElement(block);
+            });
+          });
+        </script>
       </body>
     </html>
   </xsl:template>
