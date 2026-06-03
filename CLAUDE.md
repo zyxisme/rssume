@@ -110,6 +110,7 @@ cargo build --release
 - Config auto-created on first run if missing (`~/.config/rssume/config.toml`)
 - **Static assets**: embed via `include_str!()` and serve through dedicated endpoints (e.g., `/feeds/style.xsl` for XSLT)
 - **XSLT pattern**: use `<?xml-stylesheet?>` processing instruction in XML endpoints for browser-friendly rendering
+- **RSS Content-Type**: use `text/xml` (not `application/rss+xml`) — Chrome does not apply XSLT to `application/rss+xml`
 
 ## Code Conventions
 
