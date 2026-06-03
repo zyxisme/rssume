@@ -271,7 +271,7 @@
             padding-right: 12px;
             text-align: right;
             font-family: var(--font-mono);
-            font-size: 13px;
+            font-size: 14px;
             line-height: 1.6;
             white-space: pre;
             color: var(--hairline-strong);
@@ -285,6 +285,7 @@
             padding: 16px;
             background: transparent;
             white-space: pre;
+            line-height: 1.6;
           }
 
           /* highlight.js style overrides for Vercel design */
