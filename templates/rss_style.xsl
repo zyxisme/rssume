@@ -379,13 +379,6 @@
                     </xsl:if>
                   </div>
 
-                  <xsl:if test="description[contains(., '[AI 摘要]')]">
-                    <div class="summary">
-                      <strong>[AI 摘要]</strong>
-                      <xsl:value-of select="substring-after(description, '[AI 摘要] ')"/>
-                    </div>
-                  </xsl:if>
-
                   <xsl:if test="content:encoded">
                     <div class="content">
                       <xsl:value-of select="content:encoded" disable-output-escaping="yes"/>

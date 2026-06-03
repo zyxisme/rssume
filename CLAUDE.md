@@ -116,6 +116,7 @@ cargo build --release
 - **Static assets**: embed via `include_str!()` and serve through dedicated endpoints (e.g., `/feeds/style.xsl` for XSLT)
 - **XSLT pattern**: use `<?xml-stylesheet?>` processing instruction in XML endpoints for browser-friendly rendering
 - **RSS Content-Type**: use `text/xml` (not `application/rss+xml`) — Chrome does not apply XSLT to `application/rss+xml`
+- **AI summary in RSS**: summary MUST be inside `<content:encoded>` (not just `<description>`) — most RSS readers only render `content:encoded`. Use inline styles (`background`, `border-left`, `padding`, `border-radius`, `font-size`, `color`) since readers strip external CSS. Also keep summary in `<description>` for feed previews. XSL template renders summary from `content:encoded`, do NOT duplicate from `description`.
 
 ## RSS Preview Page (XSL)
 
