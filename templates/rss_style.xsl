@@ -433,14 +433,27 @@
               copyBtn.className = 'code-copy';
               copyBtn.textContent = 'Copy';
               copyBtn.onclick = function() {
-                navigator.clipboard.writeText(block.textContent).then(function() {
+                var text = block.textContent;
+                var done = function() {
                   copyBtn.textContent = 'Copied!';
                   copyBtn.classList.add('copied');
                   setTimeout(function() {
                     copyBtn.textContent = 'Copy';
                     copyBtn.classList.remove('copied');
                   }, 2000);
-                });
+                };
+                if (navigator.clipboard &amp;&amp; navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(text).then(done);
+                } else {
+                  var ta = document.createElement('textarea');
+                  ta.value = text;
+                  ta.style.cssText = 'position:fixed;left:-9999px';
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(ta);
+                  done();
+                }
               };
 
               header.appendChild(langSpan);
