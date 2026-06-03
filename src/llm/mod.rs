@@ -174,7 +174,7 @@ pub async fn chat_stream(
         tracing::warn!(
             text_len = full_text.len(),
             max_tokens = config.max_tokens,
-            "LLM response truncated: max_tokens limit reached — using partial result"
+            "LLM response truncated: max_tokens limit reached - using partial result"
         );
     }
 
