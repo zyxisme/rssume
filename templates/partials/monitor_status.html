@@ -31,7 +31,7 @@
             <span class="badge badge-success">{{ t.stage }}</span>
         </div>
         {% if t.streamed_text %}
-        <div class="stream-text" style="margin-top:8px;font-size:13px;color:var(--mute);white-space:pre;overflow-x:hidden;overflow-y:auto;max-height:200px;">{{ t.streamed_text }}</div>
+        {% set lines = t.streamed_text | split(pat="\n") %}{% set total = lines | length %}{% set start = total - 5 %}{% if start < 0 %}{% set start = 0 %}{% endif %}<div class="stream-text" style="margin-top:8px;font-size:13px;color:var(--mute);white-space:pre;overflow-x:hidden;overflow-y:hidden;height:120px;">{{ lines | slice(start=start, end=total) | join(sep="\n") }}</div>
         {% endif %}
     </div>
     {% endfor %}

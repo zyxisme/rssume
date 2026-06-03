@@ -72,6 +72,11 @@ Design system: Vercel-inspired (see DESIGN.md)
   from the API. Client-side: `white-space:pre; overflow-x:hidden; overflow-y:auto; max-height:200px`
   clips long lines at container width and scrolls vertically. The `hx-on:after-swap` auto-scroll
   handler keeps the view pinned to the latest content.
+- **htmx streaming fixed-height**: use `height:Npx` (not `max-height`) for fixed-height streaming
+  text. `overflow-y:auto` preserves scrolling for auto-scroll; `overflow-y:hidden` for no-scroll.
+- **Tera last-N-lines**: truncate streamed text to last N lines in template:
+  `{% set lines = text | split(pat="\n") %}{% set total = lines | length %}{% set start = total - N %}{% if start < 0 %}{% set start = 0 %}{% endif %}{{ lines | slice(start=start, end=total) | join(sep="\n") }}`
+- **Monitor terminology**: "翻译状态窗口" = `.stream-text` (translation content), NOT `#active-translations` (container)
 
 ## LLM Integration
 
