@@ -89,6 +89,21 @@ pub async fn chat_stream(
     };
 
     let url = format!("{}/chat/completions", config.base_url.trim_end_matches('/'));
+
+    tracing::info!(
+        url = url.as_str(),
+        model = config.model.as_str(),
+        system_prompt_len = system_prompt.len(),
+        user_prompt_len = user_prompt.len(),
+        max_tokens = config.max_tokens,
+        "LLM request"
+    );
+    tracing::debug!(
+        system_prompt = system_prompt,
+        user_prompt = user_prompt,
+        "LLM request body"
+    );
+
     let resp = client
         .post(&url)
         .header("Authorization", format!("Bearer {}", config.api_key))
@@ -101,6 +116,7 @@ pub async fn chat_stream(
     if !resp.status().is_success() {
         let s = resp.status();
         let t = resp.text().await.unwrap_or_default();
+        tracing::error!(status = %s, body = t.as_str(), "LLM API error");
         return Err(crate::error::AppError::Llm(format!("API {}: {}", s, t)));
     }
 
@@ -115,10 +131,12 @@ pub async fn chat_stream(
             match tokio::time::timeout(std::time::Duration::from_secs(60), stream.next()).await {
                 Ok(Some(Ok(b))) => b,
                 Ok(Some(Err(e))) => {
+                    tracing::error!(error = %e, "LLM stream error");
                     return Err(crate::error::AppError::Llm(format!("stream: {}", e)));
                 }
                 Ok(None) => break,
                 Err(_) => {
+                    tracing::error!("LLM stream idle timeout");
                     return Err(crate::error::AppError::Llm("idle timeout".into()));
                 }
             };
@@ -153,6 +171,11 @@ pub async fn chat_stream(
     }
 
     if finish_reason.as_deref() == Some("length") {
+        tracing::error!(
+            text_len = full_text.len(),
+            max_tokens = config.max_tokens,
+            "LLM response truncated: max_tokens limit reached"
+        );
         return Err(crate::error::AppError::Llm(
             "translation truncated: max_tokens limit reached".into(),
         ));
@@ -163,6 +186,17 @@ pub async fn chat_stream(
         completion_tokens: full_text.len() as u32 / 4,
         total_tokens: 0,
     });
+
+    tracing::info!(
+        text_len = full_text.len(),
+        prompt_tokens = usage.prompt_tokens,
+        completion_tokens = usage.completion_tokens,
+        total_tokens = usage.total_tokens,
+        finish_reason = finish_reason.as_deref().unwrap_or("none"),
+        "LLM response"
+    );
+    tracing::debug!(text = full_text.as_str(), "LLM response text");
+
     Ok(StreamResult {
         text: full_text,
         usage,
