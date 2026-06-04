@@ -122,8 +122,3 @@ jobs:
           fi
         shell: bash
 
-      - name: Upload binary
-        uses: actions/upload-artifact@v5
-        with:
-          name: rssume-${{ matrix.target.triple }}
-          path: target/${{ matrix.target.triple }}/${{ matrix.target.profile }}/rssume${{ matrix.target.ext }}

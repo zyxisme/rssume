@@ -51,23 +51,11 @@ jobs:
       - name: Build release
         run: cargo build --release --target ${{ matrix.target.triple }}
 
-      - name: Package (unix)
-        if: matrix.target.os != 'windows-latest'
-        run: |
-          cd target/${{ matrix.target.triple }}/release
-          tar czf ../../../rssume-${{ matrix.target.triple }}.tar.gz rssume
-
-      - name: Package (windows)
-        if: matrix.target.os == 'windows-latest'
-        run: |
-          cd target/${{ matrix.target.triple }}/release
-          7z a ../../../rssume-${{ matrix.target.triple }}.zip rssume.exe
-
       - name: Upload artifact
         uses: actions/upload-artifact@v5
         with:
           name: rssume-${{ matrix.target.triple }}
-          path: rssume-${{ matrix.target.triple }}.*
+          path: target/${{ matrix.target.triple }}/release/rssume*
 
   release:
     needs: build
