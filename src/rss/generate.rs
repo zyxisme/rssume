@@ -1,5 +1,5 @@
 use crate::storage::Article;
-use ammonia::clean;
+use ammonia::Builder;
 use chrono::DateTime;
 
 pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
@@ -58,7 +58,42 @@ pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
             ));
         }
         // Clean HTML to ensure proper tag closing and prevent nesting issues
-        let cleaned_content = clean(&article.content);
+        // Allow id attributes for in-article anchor links (e.g., footnotes)
+        let cleaned_content = Builder::default()
+            .add_tag_attributes("div", &["id"])
+            .add_tag_attributes("span", &["id"])
+            .add_tag_attributes("a", &["id"])
+            .add_tag_attributes("h1", &["id"])
+            .add_tag_attributes("h2", &["id"])
+            .add_tag_attributes("h3", &["id"])
+            .add_tag_attributes("h4", &["id"])
+            .add_tag_attributes("h5", &["id"])
+            .add_tag_attributes("h6", &["id"])
+            .add_tag_attributes("p", &["id"])
+            .add_tag_attributes("li", &["id"])
+            .add_tag_attributes("td", &["id"])
+            .add_tag_attributes("th", &["id"])
+            .add_tag_attributes("section", &["id"])
+            .add_tag_attributes("blockquote", &["id"])
+            .add_tag_attributes("pre", &["id"])
+            .add_tag_attributes("code", &["id"])
+            .add_tag_attributes("table", &["id"])
+            .add_tag_attributes("tr", &["id"])
+            .add_tag_attributes("ul", &["id"])
+            .add_tag_attributes("ol", &["id"])
+            .add_tag_attributes("dl", &["id"])
+            .add_tag_attributes("dt", &["id"])
+            .add_tag_attributes("dd", &["id"])
+            .add_tag_attributes("em", &["id"])
+            .add_tag_attributes("strong", &["id"])
+            .add_tag_attributes("sup", &["id"])
+            .add_tag_attributes("sub", &["id"])
+            .add_tag_attributes("details", &["id"])
+            .add_tag_attributes("summary", &["id"])
+            .add_tag_attributes("figure", &["id"])
+            .add_tag_attributes("figcaption", &["id"])
+            .clean(&article.content)
+            .to_string();
         xml.push_str(&cleaned_content);
         if article.translated {
             let model = article.translation_model.as_deref().unwrap_or("unknown");
