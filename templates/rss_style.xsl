@@ -86,6 +86,7 @@
             letter-spacing: -0.5px;
           }
 
+          header .header-left { display: flex; align-items: center; gap: 12px; }
           header nav { display: flex; gap: 24px; align-items: center; }
           header nav a {
             color: var(--body);
@@ -134,6 +135,7 @@
             padding: 24px;
             margin-bottom: 16px;
             transition: border-color 0.15s;
+            contain: layout style;
           }
           .card:hover { border-color: var(--hairline-strong); }
 
@@ -338,24 +340,24 @@
 
           /* TOC Sidebar */
           .toc-toggle {
-            position: fixed;
-            bottom: 24px;
-            left: 24px;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--primary);
-            color: var(--on-primary);
-            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: var(--rounded-md);
+            background: var(--canvas-soft);
+            color: var(--body);
+            border: 1px solid var(--hairline);
             cursor: pointer;
-            z-index: 95;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            transition: background 0.15s;
+            font-size: 16px;
+            transition: all 0.15s;
           }
-          .toc-toggle:hover { background: var(--link); }
+          .toc-toggle:hover {
+            background: var(--canvas-soft-2);
+            color: var(--ink);
+            border-color: var(--hairline-strong);
+          }
 
           .toc-sidebar {
             position: fixed;
@@ -409,14 +411,19 @@
           }
 
           @media (max-width: 768px) {
-            .toc-toggle { display: none; }
+            header .logo { display: none; }
             .toc-sidebar { display: none; }
           }
         </style>
       </head>
       <body>
         <header>
-          <a href="/panel" class="logo">rssume</a>
+          <div class="header-left">
+            <xsl:if test="rss/channel/item">
+              <button class="toc-toggle" onclick="toggleToc()" aria-label="Toggle table of contents">&#9776;</button>
+            </xsl:if>
+            <a href="/panel" class="logo">rssume</a>
+          </div>
           <nav>
             <a href="/panel">Dashboard</a>
             <a href="/panel/monitor">Monitor</a>
@@ -424,7 +431,6 @@
           </nav>
         </header>
         <xsl:if test="rss/channel/item">
-          <button class="toc-toggle" onclick="toggleToc()" aria-label="Toggle table of contents">&#9776;</button>
           <aside class="toc-sidebar" id="tocSidebar">
             <div class="toc-header">
               <xsl:value-of select="rss/channel/title"/>

@@ -124,6 +124,7 @@ cargo build --release
 
 - **Content rendering**: `rss_style.xsl` uses `<xsl:value-of select="content:encoded" disable-output-escaping="yes"/>` to render HTML
 - **Article anchors**: each card has `id="article-{position()}"` (1-based). Panel `feed.html` links to these via `/feeds/{name}#article-{loop.index}` (Tera `loop.index` is also 1-based)
+- **Article content isolation**: use `contain: layout style` on `.card` to prevent broken HTML in one article's rich text from leaking layout/style into other articles
 - **Code block enhancements**: client-side JS wraps `<pre><code>` after `hljs.highlightElement()` — adds line numbers, language badge, copy button
 - **XSL DOM manipulation**: use `DOMContentLoaded` listener; clone nodes with `cloneNode(true)` before replacing originals
 - **Code block CSS**: `.code-body` uses `display:flex; overflow-x:auto`, `.line-numbers` has `flex-shrink:0; white-space:pre`
