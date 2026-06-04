@@ -564,6 +564,46 @@
               pre.parentNode.replaceChild(wrapper, pre);
             });
           });
+
+        // TOC sidebar
+        function toggleToc() {
+          var sidebar = document.getElementById('tocSidebar');
+          sidebar.classList.toggle('open');
+        }
+
+        function scrollToArticle(e, id) {
+          e.preventDefault();
+          var el = document.getElementById(id);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+
+        // IntersectionObserver for active highlight
+        document.addEventListener('DOMContentLoaded', function() {
+          var cards = document.querySelectorAll('.card[id^="article-"]');
+          var tocLinks = document.querySelectorAll('.toc-list a');
+          if (!cards.length || !tocLinks.length) return;
+
+          var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+              if (entry.isIntersecting) {
+                var id = entry.target.id;
+                tocLinks.forEach(function(link) {
+                  if (link.getAttribute('href') === '#' + id) {
+                    link.classList.add('active');
+                  } else {
+                    link.classList.remove('active');
+                  }
+                });
+              }
+            });
+          }, { rootMargin: '-20% 0px -60% 0px' });
+
+          cards.forEach(function(card) {
+            observer.observe(card);
+          });
+        });
         </script>
       </body>
     </html>
