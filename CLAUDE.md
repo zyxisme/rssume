@@ -74,6 +74,7 @@ Design system: Vercel-inspired (see DESIGN.md)
   handler keeps the view pinned to the latest content.
 - **htmx streaming fixed-height**: use `height:Npx` (not `max-height`) for fixed-height streaming
   text. `overflow-y:auto` preserves scrolling for auto-scroll; `overflow-y:hidden` for no-scroll.
+- **Feed detail buttons**: each article card has two buttons — "Read article" (`/feeds/{name}#article-{loop.index}`) links to rssume readable page, "Original" (`{{ article.link }}`) links to source article
 - **Tera last-N-lines**: truncate streamed text to last N lines in template:
   `{% set lines = text | split(pat="\n") %}{% set total = lines | length %}{% set start = total - N %}{% if start < 0 %}{% set start = 0 %}{% endif %}{{ lines | slice(start=start, end=total) | join(sep="\n") }}`
 - **Monitor terminology**: "翻译状态窗口" = `.stream-text` (translation content), NOT `#active-translations` (container)
@@ -89,6 +90,7 @@ Design system: Vercel-inspired (see DESIGN.md)
 ## Build & Run
 
 ```bash
+export PATH="$HOME/.cargo/bin:$PATH"
 cargo fmt --check && cargo clippy --all-targets
 cargo test
 # Just run — config auto-created on first run, templates embedded at compile time
@@ -121,6 +123,7 @@ cargo build --release
 ## RSS Preview Page (XSL)
 
 - **Content rendering**: `rss_style.xsl` uses `<xsl:value-of select="content:encoded" disable-output-escaping="yes"/>` to render HTML
+- **Article anchors**: each card has `id="article-{position()}"` (1-based). Panel `feed.html` links to these via `/feeds/{name}#article-{loop.index}` (Tera `loop.index` is also 1-based)
 - **Code block enhancements**: client-side JS wraps `<pre><code>` after `hljs.highlightElement()` — adds line numbers, language badge, copy button
 - **XSL DOM manipulation**: use `DOMContentLoaded` listener; clone nodes with `cloneNode(true)` before replacing originals
 - **Code block CSS**: `.code-body` uses `display:flex; overflow-x:auto`, `.line-numbers` has `flex-shrink:0; white-space:pre`
