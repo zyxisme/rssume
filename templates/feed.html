@@ -44,6 +44,8 @@
         </details>
         {% endif %}
     </details>
+    <a href="/feeds/{{ feed_name }}#article-{{ loop.index }}" target="_blank" rel="noopener" class="btn" style="margin-top: 12px;">Read article</a>
+    <a href="{{ article.link }}" target="_blank" rel="noopener" class="btn" style="margin-top: 12px; margin-left: 8px;">Original</a>
 </div>
 {% endfor %}
 

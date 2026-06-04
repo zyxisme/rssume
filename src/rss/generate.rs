@@ -30,7 +30,7 @@ pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
     xml.push_str(&format!("    <lastBuildDate>{}</lastBuildDate>\n", now));
     xml.push_str("    <generator>rssume</generator>\n");
 
-    for article in articles.iter().take(50) {
+    for article in articles.iter() {
         xml.push_str("    <item>\n");
         xml.push_str(&format!("      <title>{}</title>\n", esc(&article.title)));
 
