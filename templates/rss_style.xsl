@@ -335,6 +335,83 @@
             h1 { font-size: 24px; }
             .card { padding: 16px; }
           }
+
+          /* TOC Sidebar */
+          .toc-toggle {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: var(--on-primary);
+            border: none;
+            cursor: pointer;
+            z-index: 95;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: background 0.15s;
+          }
+          .toc-toggle:hover { background: var(--link); }
+
+          .toc-sidebar {
+            position: fixed;
+            top: 56px;
+            left: 0;
+            width: 240px;
+            height: calc(100vh - 56px);
+            background: var(--canvas);
+            border-right: 1px solid var(--hairline);
+            z-index: 90;
+            transform: translateX(-100%);
+            transition: transform 0.2s ease;
+            display: flex;
+            flex-direction: column;
+          }
+          .toc-sidebar.open { transform: translateX(0); }
+
+          .toc-header {
+            padding: 16px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ink);
+            border-bottom: 1px solid var(--hairline);
+            flex-shrink: 0;
+          }
+
+          .toc-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+          }
+
+          .toc-list a {
+            display: block;
+            padding: 8px 20px;
+            font-size: 13px;
+            color: var(--body);
+            text-decoration: none;
+            line-height: 1.4;
+            transition: color 0.15s, background 0.15s;
+            border-left: 2px solid transparent;
+          }
+          .toc-list a:hover {
+            color: var(--ink);
+            background: var(--canvas-soft);
+          }
+          .toc-list a.active {
+            color: var(--link);
+            border-left-color: var(--link);
+            font-weight: 500;
+          }
+
+          @media (max-width: 768px) {
+            .toc-toggle { display: none; }
+            .toc-sidebar { display: none; }
+          }
         </style>
       </head>
       <body>
