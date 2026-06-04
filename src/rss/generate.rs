@@ -1,4 +1,5 @@
 use crate::storage::Article;
+use ammonia::clean;
 use chrono::DateTime;
 
 pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
@@ -56,7 +57,9 @@ pub fn generate_rss(feed_name: &str, articles: &[Article]) -> String {
                 s
             ));
         }
-        xml.push_str(&article.content);
+        // Clean HTML to ensure proper tag closing and prevent nesting issues
+        let cleaned_content = clean(&article.content);
+        xml.push_str(&cleaned_content);
         if article.translated {
             let model = article.translation_model.as_deref().unwrap_or("unknown");
             let tokens = article
