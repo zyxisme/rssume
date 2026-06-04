@@ -412,7 +412,15 @@
 
           @media (max-width: 768px) {
             header .logo { display: none; }
-            .toc-sidebar { display: none; }
+            .toc-sidebar {
+              width: 100%;
+              visibility: hidden;
+              transform: translateX(-100%);
+            }
+            .toc-sidebar.open {
+              visibility: visible;
+              transform: translateX(0);
+            }
           }
         </style>
       </head>
