@@ -588,7 +588,7 @@
         function scrollToArticle(e, id) {
           e.preventDefault();
           var sidebar = document.getElementById('tocSidebar');
-          if (window.innerWidth <= 768) {
+          if (window.innerWidth &lt;= 768) {
             sidebar.classList.remove('open');
           }
           var el = document.getElementById(id);
