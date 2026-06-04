@@ -130,7 +130,7 @@ cargo build --release
 - **Code block CSS**: `.code-body` uses `display:flex; overflow-x:auto`, `.line-numbers` has `flex-shrink:0; white-space:pre`
 - **Clipboard pattern**: `navigator.clipboard.writeText()` → toggle button text/class → `setTimeout` reset after 2s
 - **XSL inline JS escaping**: escape `<` as `&lt;` in JavaScript inside XSL templates (e.g., `i &lt;= len` not `i <= len`). Unescaped `<` breaks XML well-formedness and causes browsers to silently fail XSLT, rendering a blank page.
-- **XSL validation**: when debugging blank RSS preview, validate XSL as XML first: `python3 -c "import xml.etree.ElementTree as ET; ET.fromstring(open('templates/rss_style.xsl').read())"`
+- **XSL validation**: when debugging blank RSS preview, validate XSL as XML first: `python3 -c "import xml.etree.ElementTree as ET; ET.fromstring(open('templates/rss_style.xsl').read())"` — a single unescaped `<` in inline JS causes the entire XSLT to fail silently
 
 ## Code Conventions
 
