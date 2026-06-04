@@ -137,6 +137,16 @@ impl FeedData {
                     .ok()
                     .map(|dt| dt.to_rfc2822());
             }
+            // Sort by published_at descending (newest first)
+            articles.sort_by(|a, b| {
+                let dt_a = chrono::DateTime::parse_from_rfc2822(&a.published_at)
+                    .ok()
+                    .map(|dt| dt.with_timezone(&chrono::Utc));
+                let dt_b = chrono::DateTime::parse_from_rfc2822(&b.published_at)
+                    .ok()
+                    .map(|dt| dt.with_timezone(&chrono::Utc));
+                dt_b.cmp(&dt_a)
+            });
             return Ok(FeedData { articles });
         }
 
@@ -153,6 +163,16 @@ impl FeedData {
                 .ok()
                 .map(|dt| dt.to_rfc2822());
         }
+        // Sort by published_at descending (newest first)
+        data.articles.sort_by(|a, b| {
+            let dt_a = chrono::DateTime::parse_from_rfc2822(&a.published_at)
+                .ok()
+                .map(|dt| dt.with_timezone(&chrono::Utc));
+            let dt_b = chrono::DateTime::parse_from_rfc2822(&b.published_at)
+                .ok()
+                .map(|dt| dt.with_timezone(&chrono::Utc));
+            dt_b.cmp(&dt_a)
+        });
         Ok(data)
     }
 
