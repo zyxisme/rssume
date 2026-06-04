@@ -423,6 +423,21 @@
             <a href="/panel/settings">Settings</a>
           </nav>
         </header>
+        <xsl:if test="rss/channel/item">
+          <button class="toc-toggle" onclick="toggleToc()" aria-label="Toggle table of contents">&#9776;</button>
+          <aside class="toc-sidebar" id="tocSidebar">
+            <div class="toc-header">
+              <xsl:value-of select="rss/channel/title"/>
+            </div>
+            <nav class="toc-list">
+              <xsl:for-each select="rss/channel/item">
+                <a href="#article-{position()}" onclick="scrollToArticle(event, 'article-{position()}')">
+                  <xsl:value-of select="title"/>
+                </a>
+              </xsl:for-each>
+            </nav>
+          </aside>
+        </xsl:if>
         <main>
           <h1><xsl:value-of select="rss/channel/title"/></h1>
           <p class="subtitle">
@@ -435,7 +450,7 @@
           <xsl:choose>
             <xsl:when test="rss/channel/item">
               <xsl:for-each select="rss/channel/item">
-                <div class="card">
+                <div class="card" id="article-{position()}">
                   <h3>
                     <a href="{link}" target="_blank" rel="noopener" style="color: var(--ink); text-decoration: none;">
                       <xsl:value-of select="title"/>
