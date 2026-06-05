@@ -77,12 +77,16 @@ url = "https://hnrss.org/frontpage"
 enabled = true
 interval_secs = 300
 max_articles = 25  # 每次拉取最大文章数
+# target_lang = "简体中文"              # 覆盖全局目标语言（可选）
+# prompt_append = "保留代码块格式"       # 注入 LLM 的额外指令（可选）
 ```
 
 ### 配置说明
 
 - **API Key** — 使用 `${ENV_VAR}` 语法引用环境变量，避免明文写入
-- **target** — POSIX locale 格式（如 `zh_CN`、`en_US`），直接传给 LLM 作为翻译目标语言
+- **target** — 翻译目标语言，支持 POSIX locale（`zh_CN`）或自由格式名称（`简体中文`、`English`），直接传给 LLM
+- **target_lang**（per-feed）— 覆盖全局 `target`，可为每个订阅源设置独立目标语言
+- **prompt_append**（per-feed）— 注入 LLM 的额外指令，不影响全局 provider 级别配置
 - **max_concurrent_requests** — 控制同时进行的翻译数量，避免 API 限流（默认 3）
 - **max_retries** — LLM 调用或解析失败时的重试次数（默认 2）
 - **retry_delay_secs** — 每次重试前的等待时间（默认 1 秒）
