@@ -56,7 +56,9 @@ jobs:
         run: |
           cd target/${{ matrix.target.triple }}/release
           for f in rssume rssume.exe rssume.d rssume.pdb; do
-            [ -f "$f" ] && mv "$f" "${f/rssume/rssume-${{ matrix.target.triple }}}"
+            if [ -f "$f" ]; then
+              mv "$f" "${f/rssume/rssume-${{ matrix.target.triple }}}"
+            fi
           done
 
       - name: Upload artifact
