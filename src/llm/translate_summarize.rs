@@ -38,17 +38,28 @@ pub async fn translate_and_summarize(
     title: &str,
     content: &str,
     target_lang: &str,
+    feed_prompt_append: Option<&str>,
     retry_ctx: &mut super::retry::RetryContext,
 ) -> Result<(StreamResult, ParsedArticle), crate::error::AppError> {
     let prompt = format!(
         "Target language: {}\n\nTitle: {}\n\nContent:\n{}",
         target_lang, title, content
     );
-    let append = config.prompt_append.clone().unwrap_or_default();
-    let full = if append.is_empty() {
+    let mut parts = Vec::new();
+    if let Some(fpa) = feed_prompt_append
+        && !fpa.is_empty()
+    {
+        parts.push(fpa.to_string());
+    }
+    if let Some(ref pa) = config.prompt_append
+        && !pa.is_empty()
+    {
+        parts.push(pa.clone());
+    }
+    let full = if parts.is_empty() {
         prompt
     } else {
-        format!("{}\n{}", prompt, append)
+        format!("{}\n{}", prompt, parts.join("\n"))
     };
 
     loop {

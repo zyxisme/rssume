@@ -10,7 +10,7 @@ pub fn needs_translation(text: &str, target_lang: &str) -> bool {
         return false;
     }
     match detect(text) {
-        Some(lang) => normalize_code(&lang) != normalize_code(target_lang),
+        Some(lang) => normalize_code(&lang) != resolve_lang_code(target_lang),
         None => false,
     }
 }
@@ -30,6 +30,28 @@ fn normalize_code(code: &str) -> &str {
         "por" | "pt" => "por",
         "ita" | "it" => "ita",
         other => other,
+    }
+}
+
+/// Map free-form language names to ISO 639-3 codes for comparison.
+fn resolve_lang_code(code: &str) -> &str {
+    let normalized = normalize_code(code);
+    if normalized != code {
+        return normalized;
+    }
+    match code {
+        "简体中文" | "繁體中文" | "中文" | "Chinese" | "Mandarin" => "zho",
+        "English" | "英文" => "eng",
+        "日本語" | "Japanese" | "日文" => "jpn",
+        "한국어" | "Korean" | "韩文" => "kor",
+        "Français" | "French" | "法文" => "fra",
+        "Deutsch" | "German" | "德文" => "deu",
+        "Español" | "Spanish" | "西班牙文" => "spa",
+        "Русский" | "Russian" | "俄文" => "rus",
+        "العربية" | "Arabic" | "阿拉伯文" => "ara",
+        "Português" | "Portuguese" | "葡萄牙文" => "por",
+        "Italiano" | "Italian" | "意大利文" => "ita",
+        other => normalize_code(other),
     }
 }
 

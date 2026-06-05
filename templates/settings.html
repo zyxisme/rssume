@@ -42,15 +42,17 @@
 <h2 style="margin-top: 32px;">Configured Feeds</h2>
 <table>
     <thead>
-        <tr><th>Name</th><th>URL</th><th>Status</th><th>Interval</th><th>RSS</th></tr>
+        <tr><th>Name</th><th>URL</th><th>Status</th><th>Interval</th><th>Language</th><th>Prompt</th><th>RSS</th></tr>
     </thead>
     <tbody>
         {% for feed in config.feeds %}
         <tr>
             <td><a href="/panel/feed/{{ feed.name }}" style="color: var(--link); text-decoration: none;">{{ feed.name }}</a></td>
-            <td style="font-family: var(--font-mono); font-size: 12px; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ feed.url }}">{{ feed.url }}</td>
+            <td style="font-family: var(--font-mono); font-size: 12px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ feed.url }}">{{ feed.url }}</td>
             <td><span class="badge {% if feed.enabled %}badge-success{% else %}badge-warning{% endif %}">{% if feed.enabled %}Active{% else %}Disabled{% endif %}</span></td>
             <td>{{ feed.interval_secs }}s</td>
+            <td style="font-size: 12px;">{% if feed.target_lang %}{{ feed.target_lang }}{% else %}<span style="color: var(--mute);">default</span>{% endif %}</td>
+            <td style="font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{% if feed.prompt_append %}{{ feed.prompt_append }}{% endif %}">{% if feed.prompt_append %}{{ feed.prompt_append }}{% else %}<span style="color: var(--mute);">-</span>{% endif %}</td>
             <td><code style="font-family: var(--font-mono); font-size: 12px;">/feeds/{{ feed.name }}</code></td>
         </tr>
         {% endfor %}
@@ -60,11 +62,11 @@
 <div class="card" style="margin-top: 32px;">
     <h3>Config File Location</h3>
     <p style="color: var(--body); font-size: 14px;">
-        Edit <code style="font-family: var(--font-mono); font-size: 13px; background: var(--canvas-soft-2); padding: 2px 6px; border-radius: var(--rounded-sm);">~/.config/rssume/config.toml</code>
+        Edit <code style="font-family: var(--font-mono); font-size: 13px; background: var(--canvas-soft-2); padding: 2px 6px; border-radius: var(--rounded-sm);">{{ config_path }}</code>
         to change these settings, add feeds, or configure LLM providers.
     </p>
     <p style="color: var(--mute); font-size: 13px; margin-top: 8px;">
-        Data stored at: <code style="font-family: var(--font-mono); font-size: 12px;">~/.local/share/rssume/data/</code>
+        Data stored at: <code style="font-family: var(--font-mono); font-size: 12px;">{{ data_dir }}</code>
     </p>
 </div>
 

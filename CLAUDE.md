@@ -145,8 +145,10 @@ cargo build --release
 - **LLM streaming**: `resp.bytes_stream()` with SSE parsing, 60s idle timeout per chunk
 - **Article compat**: new fields use `#[serde(default)]` so existing TOML data deserializes fine
 - **Templates**: `include_str!()` at compile time + `tera.add_raw_template()` in `tera_instance()`
+- **Settings page**: passes `config_path` and `data_dir` to template via `tera::Context` — never hardcode OS-specific paths in templates.
 - **Target locale**: `zh_CN` POSIX format (not ISO 639-3 `zho`), passed directly to LLM in translate prompt
-- **Lang detection**: `normalize_code()` splits on `-` and `_`, maps 11 codes (zh/en/ja/ko/fr/de/es/ru/ar/pt/it) to ISO 639-3
+- **Lang detection**: `normalize_code()` maps ISO codes to 639-3; `resolve_lang_code()` additionally handles free-form names (简体中文, English, 日本語, etc.). `needs_translation()` uses `resolve_lang_code()`.
+- **Per-feed config**: `FeedConfig` supports optional `target_lang` (overrides global `language.target`) and `prompt_append` (injected into LLM prompt, not replacing provider-level append). Injection order: feed prompt_append first, then provider prompt_append.
 - **Self-referential URLs**: when generating URLs that point back to rssume (e.g. OPML `xmlUrl`),
   extract base URL from request headers: `X-Forwarded-Proto` + `X-Forwarded-Host` → `Host` header
   → config fallback. Never hardcode upstream URLs where rssume's own URL is needed.

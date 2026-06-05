@@ -60,6 +60,10 @@ pub struct FeedConfig {
     pub interval_secs: u64,
     #[serde(default = "default_max_articles")]
     pub max_articles: usize,
+    #[serde(default)]
+    pub target_lang: Option<String>,
+    #[serde(default)]
+    pub prompt_append: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -157,7 +161,7 @@ host = "127.0.0.1"
 port = 3000
 
 [language]
-# Target language code (locale format e.g. zh_CN, en, ja)
+# Target language — ISO code (zh_CN, en, ja) or free-form name (简体中文, English, 日本語)
 target = "zh_CN"
 
 [llm]
@@ -184,6 +188,8 @@ url = "https://hnrss.org/frontpage"
 enabled = true
 interval_secs = 300
 max_articles = 25
+# target_lang = "简体中文"     # per-feed target language override (optional)
+# prompt_append = "..."        # extra instructions injected into the LLM prompt (optional)
 
 [[feeds]]
 name = "rust-blog"
@@ -191,6 +197,8 @@ url = "https://blog.rust-lang.org/feed.xml"
 enabled = true
 interval_secs = 600
 max_articles = 25
+# target_lang = "English"
+# prompt_append = "Focus on technical details."
 
 [logging]
 level = "info"
@@ -251,6 +259,8 @@ url = "https://example.com/feed.xml"
         assert!(config.feeds[0].enabled);
         assert_eq!(config.feeds[0].interval_secs, 300);
         assert_eq!(config.feeds[0].max_articles, 25);
+        assert!(config.feeds[0].target_lang.is_none());
+        assert!(config.feeds[0].prompt_append.is_none());
 
         // Logging defaults (entire section missing)
         assert_eq!(config.logging.level, "info");

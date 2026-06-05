@@ -337,6 +337,14 @@ async fn settings() -> Result<Html<String>, crate::error::AppError> {
     let mut ctx = Context::new();
     ctx.insert("title", "rssume Settings");
     ctx.insert("config", &config);
+    ctx.insert(
+        "config_path",
+        &crate::config::config_path().display().to_string(),
+    );
+    ctx.insert(
+        "data_dir",
+        &crate::config::Config::data_dir().display().to_string(),
+    );
     Ok(Html(tera.render("settings.html", &ctx).map_err(|e| {
         crate::error::AppError::Storage(format!("render: {}", e))
     })?))

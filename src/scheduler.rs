@@ -126,7 +126,11 @@ impl Scheduler {
         );
 
         let tc = config.llm.translation.clone();
-        let target = config.language.target.clone();
+        let feed_cfg = config.feeds.iter().find(|f| f.name == feed_name);
+        let target = feed_cfg
+            .and_then(|f| f.target_lang.clone())
+            .unwrap_or_else(|| config.language.target.clone());
+        let feed_prompt_append = feed_cfg.and_then(|f| f.prompt_append.clone());
         let retry = RetryConfig {
             max_retries: config.llm.max_retries,
             delay_secs: config.llm.retry_delay_secs,
@@ -140,6 +144,7 @@ impl Scheduler {
             .map(|raw| {
                 let tc = tc.clone();
                 let target = target.clone();
+                let feed_prompt_append = feed_prompt_append.clone();
                 let semaphore = semaphore.clone();
                 let monitor = monitor.clone();
                 let feed_name = feed_name_owned.clone();
@@ -155,6 +160,7 @@ impl Scheduler {
                         raw,
                         &tc,
                         &target,
+                        feed_prompt_append.as_deref(),
                         semaphore,
                         monitor.clone(),
                         retry,
@@ -314,11 +320,13 @@ impl Scheduler {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_single_article(
     feed_name: &str,
     raw: crate::rss::fetch::RawArticle,
     tc: &crate::config::LlmProviderConfig,
     target: &str,
+    feed_prompt_append: Option<&str>,
     semaphore: Arc<Semaphore>,
     monitor: Arc<RwLock<Monitor>>,
     retry: RetryConfig,
@@ -382,6 +390,7 @@ async fn process_single_article(
         &raw.title,
         &raw.content,
         target,
+        feed_prompt_append,
         &mut retry_ctx,
     )
     .await
