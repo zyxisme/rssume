@@ -51,11 +51,19 @@ jobs:
       - name: Build release
         run: cargo build --release --target ${{ matrix.target.triple }}
 
+      - name: Rename binary with target triple
+        shell: bash
+        run: |
+          cd target/${{ matrix.target.triple }}/release
+          for f in rssume rssume.exe rssume.d rssume.pdb; do
+            [ -f "$f" ] && mv "$f" "${f/rssume/rssume-${{ matrix.target.triple }}}"
+          done
+
       - name: Upload artifact
         uses: actions/upload-artifact@v5
         with:
           name: rssume-${{ matrix.target.triple }}
-          path: target/${{ matrix.target.triple }}/release/rssume*
+          path: target/${{ matrix.target.triple }}/release/rssume-*
 
   release:
     needs: build
