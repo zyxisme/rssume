@@ -100,9 +100,11 @@ impl Scheduler {
             return;
         }
 
+        let new_articles_count = new_articles.len();
+
         tracing::info!(
             feed = feed_name,
-            new = new_articles.len(),
+            new = new_articles_count,
             "new articles to process"
         );
 
@@ -139,34 +141,46 @@ impl Scheduler {
         let monitor = self.monitor.clone();
         let feed_name_owned = feed_name.to_string();
 
-        let handles: Vec<_> = new_articles
-            .into_iter()
-            .map(|raw| {
-                let tc = tc.clone();
-                let target = target.clone();
-                let feed_prompt_append = feed_prompt_append.clone();
-                let semaphore = semaphore.clone();
-                let monitor = monitor.clone();
-                let feed_name = feed_name_owned.clone();
+        type TaskResult = (
+            String,
+            String,
+            String,
+            String,
+            Option<String>,
+            String,
+            Result<Article, crate::error::AppError>,
+        );
 
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<TaskResult>(new_articles_count);
+
+        for raw in new_articles {
+            let tc = tc.clone();
+            let target = target.clone();
+            let feed_prompt_append = feed_prompt_append.clone();
+            let semaphore = semaphore.clone();
+            let monitor = monitor.clone();
+            let feed_name = feed_name_owned.clone();
+            let tx = tx.clone();
+
+            tokio::spawn(async move {
                 let title = raw.title.clone();
                 let link = raw.link.clone();
                 let published_at = raw.published_at.clone();
                 let guid = raw.guid.clone();
                 let raw_content = raw.content.clone();
-                tokio::spawn(async move {
-                    let result = process_single_article(
-                        &feed_name,
-                        raw,
-                        &tc,
-                        &target,
-                        feed_prompt_append.as_deref(),
-                        semaphore,
-                        monitor.clone(),
-                        retry,
-                    )
-                    .await;
-                    (
+                let result = process_single_article(
+                    &feed_name,
+                    raw,
+                    &tc,
+                    &target,
+                    feed_prompt_append.as_deref(),
+                    semaphore,
+                    monitor.clone(),
+                    retry,
+                )
+                .await;
+                let _ = tx
+                    .send((
                         feed_name,
                         title,
                         link,
@@ -174,18 +188,24 @@ impl Scheduler {
                         guid,
                         raw_content,
                         result,
-                    )
-                })
-            })
-            .collect();
+                    ))
+                    .await;
+            });
+        }
+
+        // Drop the original sender so the channel closes when all tasks finish
+        drop(tx);
 
         let mut translated_count: u32 = 0;
         let mut failed_count: u32 = 0;
         let mut total_tokens: u32 = 0;
 
-        for handle in handles {
-            match handle.await {
-                Ok((feed_name, title, _link, _published_at, _guid, _raw_content, Ok(article))) => {
+        // Process results as they complete (in completion order, not creation order)
+        while let Some((feed_name, title, _link, _published_at, _guid, _raw_content, result)) =
+            rx.recv().await
+        {
+            match result {
+                Ok(article) => {
                     if article.translated {
                         translated_count += 1;
                     }
@@ -208,7 +228,7 @@ impl Scheduler {
                     }
                     monitor.write().await.complete_article(&feed_name, &title);
                 }
-                Ok((feed_name, title, link, published_at, guid, raw_content, Err(e))) => {
+                Err(e) => {
                     failed_count += 1;
                     tracing::error!(
                         feed = feed_name,
@@ -218,18 +238,18 @@ impl Scheduler {
                     );
                     // Save raw article to avoid reprocessing
                     let article = Article {
-                        id: guid.unwrap_or_else(|| Uuid::new_v4().to_string()),
+                        id: _guid.unwrap_or_else(|| Uuid::new_v4().to_string()),
                         feed_name: feed_name.clone(),
                         title: title.clone(),
                         original_title: title.clone(),
-                        link,
-                        content: raw_content.clone(),
-                        original_content: raw_content,
+                        link: _link,
+                        content: _raw_content.clone(),
+                        original_content: _raw_content,
                         summary: None,
                         translated: false,
                         translated_title: false,
                         source_lang: None,
-                        published_at,
+                        published_at: _published_at,
                         published_at_rfc2822: None,
                         processed_at: chrono::Utc::now().to_rfc3339(),
                         author: None,
@@ -248,9 +268,6 @@ impl Scheduler {
                     }
                     feed_meta.add_article(&article.id, &article.published_at);
                     monitor.write().await.complete_article(&feed_name, &title);
-                }
-                Err(e) => {
-                    tracing::error!("task join error: {}", e);
                 }
             }
         }
